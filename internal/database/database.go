@@ -84,11 +84,7 @@ func (c *Controller) SetAirQuality(ctx context.Context, data []purpleapi.Respons
 		return nil
 	})
 
-	if err != redis.Nil {
-		return fmt.Errorf(`Pipe failed: %s`, err)
-	}
-
-	return nil
+	return err
 }
 
 // GetAirQuality gets 10 most recent PM2.5 AQI readings from a specific sensor.
@@ -97,7 +93,9 @@ func (c *Controller) GetAirQuality(ctx context.Context, id int) ([]float64, erro
 	qualityList := make([]float64, 0, numMeasurements)
 
 	measurements, err := c.db.LRange(ctx, key, measurementStart, numMeasurements-1).Result()
-	if err != nil {
+	if err == redis.Nil {
+		return qualityList, fmt.Errorf(`could not find data for sensor %d`, id)
+	} else if err != nil {
 		return qualityList, err
 	}
 
@@ -134,7 +132,7 @@ func (c *Controller) SetSensorLocationData(ctx context.Context, data []purpleapi
 		return nil
 	})
 
-	if err != redis.Nil {
+	if err != nil {
 		return err
 	}
 
@@ -156,12 +154,15 @@ func (c *Controller) GetSensorsInRange(ctx context.Context, longitude, latitude 
 		Unit:   "m",
 		Sort:   "ASC",
 	}).Result()
-	if err != nil {
+
+	if err == redis.Nil {
+		return ids, fmt.Errorf(`No sensors at %.4f, %.4f (%.1f m radius)`, longitude, latitude, radius)
+	} else if err != nil {
 		return ids, err
 	}
 
 	for i, sensor := range results {
-		if id, err := strconv.Atoi(sensor.Name); err != nil {
+		if id, err := strconv.Atoi(sensor.Name); err == nil {
 			ids = append(ids, id)
 		} else {
 			log.Errorf(`ID:%d:%d conversion err: %s`, id, i, err)
