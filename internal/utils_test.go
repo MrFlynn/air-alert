@@ -1,0 +1,82 @@
+package internal
+
+import "testing"
+
+func TestIsSubSetSlice(t *testing.T) {
+	if !IsSubsetSlice([]string{"a"}, []string{"a", "ba", "b"}) {
+		t.Error("Expected result to be true")
+	}
+}
+
+func TestIsSubsetSliceExact(t *testing.T) {
+	if !IsSubsetSlice([]string{"a"}, []string{"a"}) {
+		t.Error("Expected result to be true")
+	}
+}
+
+func TestIsSubSetSliceNotSubset(t *testing.T) {
+	if IsSubsetSlice([]string{"a", "a"}, []string{"a", "b"}) {
+		t.Error("Expected result to be false")
+	}
+}
+
+func TestIsNilInt(t *testing.T) {
+	if !IsNil(0) {
+		t.Error("Expected result to be true")
+	}
+}
+
+func TestIsNilIntPositive(t *testing.T) {
+	if IsNil(1) {
+		t.Error("Expected result to be false")
+	}
+}
+
+func TestIsNilFloat(t *testing.T) {
+	if !IsNil(0.0) {
+		t.Error("Expected result to be true")
+	}
+}
+
+func TestIsNilFloatPositive(t *testing.T) {
+	if IsNil(1.0) {
+		t.Error("Expected result to be false")
+	}
+}
+
+func TestIsNilEmptyString(t *testing.T) {
+	if !IsNil("") {
+		t.Error("Expected result to be true")
+	}
+}
+
+func TestIsNilString(t *testing.T) {
+	if IsNil("a") {
+		t.Error("Expected result to be false")
+	}
+}
+
+func TestIsNilBoolFalse(t *testing.T) {
+	if !IsNil(false) {
+		t.Error("Expected result to be true")
+	}
+}
+
+func TestIsNilBoolTrue(t *testing.T) {
+	if IsNil(true) {
+		t.Error("Expected result to be false")
+	}
+}
+
+func TestIsNilSliceNil(t *testing.T) {
+	var s []int
+	if !IsNil(s) {
+		t.Error("Expected result to be true")
+	}
+}
+
+func TestIsNilSliceWithValues(t *testing.T) {
+	if IsNil([]int{1, 2}) {
+		t.Error("Expected result to be false")
+	}
+}
