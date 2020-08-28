@@ -80,3 +80,11 @@ func TestIsNilSliceWithValues(t *testing.T) {
 		t.Error("Expected result to be false")
 	}
 }
+
+func TestCreateRandomString(t *testing.T) {
+	str := CreateRandomString(10)
+
+	if size := len(str); size != 10 {
+		t.Errorf("Expected string to be 10 bytes, got %d bytes", size)
+	}
+}

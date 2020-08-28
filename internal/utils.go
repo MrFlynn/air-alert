@@ -1,6 +1,20 @@
 package internal
 
-import "reflect"
+import (
+	"math/rand"
+	"reflect"
+	"strings"
+	"time"
+)
+
+const (
+	letters    = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	letterBits = 6
+	letterMask = 1<<letterBits - 1
+	letterMax  = 63 / letterBits
+)
+
+var source = rand.NewSource(time.Now().UnixNano())
 
 // IsIsSubsetSlice checks if the first slice is a subset of the
 // second one.
@@ -40,4 +54,27 @@ func IsNil(v interface{}) bool {
 	default:
 		return false
 	}
+}
+
+// CreateRandomString creates a random string of `size`.
+func CreateRandomString(size int) string {
+	builder := strings.Builder{}
+	builder.Grow(size)
+
+	for i, cache, remain := size-1, source.Int63(), letterMax; i >= 0; {
+		if remain == 0 {
+			cache = source.Int63()
+			remain = letterMax
+		}
+
+		if idx := int(cache & letterMask); idx < len(letters) {
+			builder.WriteByte(letters[idx])
+			i--
+		}
+
+		cache >>= letterBits
+		remain--
+	}
+
+	return builder.String()
 }
