@@ -146,7 +146,7 @@ func (c *Controller) SetSensorLocationData(ctx context.Context, data []purpleapi
 
 // GetSensorsInRange takes a pair of coordinates and a radius (in meters) and returns a list of sensor IDs within that
 // circle (if any exist).
-func (c *Controller) GetSensorsInRange(ctx context.Context, longitude, latitude float64, radius float64) ([]int, error) {
+func (c *Controller) GetSensorsInRange(ctx context.Context, longitude, latitude, radius float64) ([]int, error) {
 	ids := make([]int, 0, 10)
 
 	results, err := c.db.GeoRadius(ctx, sensorMapKey, longitude, latitude, &redis.GeoRadiusQuery{
