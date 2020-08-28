@@ -42,8 +42,8 @@ type Response struct {
 	ID        int      `json:"ID" db:"primary_key"`
 	ParentID  int      `json:"ParentID,omitempty" db:"append_only"`
 	Location  Location `json:"DEVICE_LOCATIONTYPE,omitempty" db:"ignore"`
-	Latitude  float32  `json:"Lat" db:"value,geo"`
-	Longitude float32  `json:"Lon" db:"value,geo"`
+	Latitude  float64  `json:"Lat" db:"value,geo"`
+	Longitude float64  `json:"Lon" db:"value,geo"`
 	PM25      float32  `json:"PM2_5Value,string" db:"value,quality"`
 }
 
