@@ -135,7 +135,7 @@ func (r *Runner) runAllTasksInOrder() error {
 // thread which will run all tasks every day at the specified time.
 func (r *Runner) Start() error {
 	if err := r.runAllTasksInOrder(); err != nil {
-		return fmt.Errorf(`Task failed during startup: %s`, err)
+		return fmt.Errorf(`task failed during startup: %s`, err)
 	}
 
 	r.scheduler.StartAsync()
