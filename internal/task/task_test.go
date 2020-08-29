@@ -9,6 +9,20 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
+type FakeTask struct{}
+
+func (f FakeTask) Run() error {
+	return nil
+}
+
+func (f FakeTask) GetPriority() uint {
+	return 0
+}
+
+func (f FakeTask) GetRate() interface{} {
+	return nil
+}
+
 var (
 	tz = time.UTC
 
@@ -101,6 +115,24 @@ func TestAddTaskMinute(t *testing.T) {
 
 	if err := simpleRunner.scheduler.Jobs()[0].Err(); err != nil {
 		t.Errorf(`Got error during job creation: %s`, err)
+	}
+}
+
+func TestAddFakeTask(t *testing.T) {
+	simpleRunner := Runner{
+		scheduler: gocron.NewScheduler(tz),
+		tasks:     make([]Task, 0, 5),
+	}
+
+	task := FakeTask{}
+	err := simpleRunner.AddTask(task)
+
+	if err == nil {
+		t.Errorf(`Expected error, got nil`)
+	}
+
+	if len(simpleRunner.tasks) != 0 {
+		t.Error(`Task should not have been added if there was an error`)
 	}
 }
 

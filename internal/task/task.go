@@ -57,6 +57,7 @@ func (m MinuteTask) GetRate() interface{} {
 	return m.Rate
 }
 
+// Runner is the main background task runner in this package.
 type Runner struct {
 	scheduler *gocron.Scheduler
 	tasks     []Task
