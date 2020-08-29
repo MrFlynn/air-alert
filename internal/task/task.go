@@ -64,7 +64,7 @@ type Runner struct {
 }
 
 // NewRunner initializes a new Runner struct.
-func NewRunner(ctx cli.Context) (Runner, error) {
+func NewRunner(ctx *cli.Context) (Runner, error) {
 	tz := ctx.String("timezone")
 
 	location, err := time.LoadLocation(tz)
