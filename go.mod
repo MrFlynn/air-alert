@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
+	github.com/go-co-op/gocron v0.3.0
 	github.com/go-redis/redis/v8 v8.0.0-beta.8
 	github.com/google/go-cmp v0.5.2
 	github.com/json-iterator/go v1.1.10
