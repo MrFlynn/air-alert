@@ -9,14 +9,16 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+// Task interface declares the methods that a Task subtype should implement.
 type Task interface {
 	Run() error
 	GetPriority() uint
-	GetTimeOfDay() string
+	GetRate() interface{}
 }
 
 type priorityToTaskMap map[uint][]Task
 
+// DailyTask is a Task that is run every day.
 type DailyTask struct {
 	TimeOfDay string
 	Priority  uint
@@ -31,8 +33,28 @@ func (d DailyTask) GetPriority() uint {
 	return d.Priority
 }
 
-func (d DailyTask) GetTimeOfDay() string {
+func (d DailyTask) GetRate() interface{} {
 	return d.TimeOfDay
+}
+
+// MinuteTask is a Task that is run every n minutes where Rate defines
+// how often the task is run.
+type MinuteTask struct {
+	Rate     uint64
+	Priority uint
+	RunFunc  func() error
+}
+
+func (m MinuteTask) Run() error {
+	return m.RunFunc()
+}
+
+func (m MinuteTask) GetPriority() uint {
+	return m.Priority
+}
+
+func (m MinuteTask) GetRate() interface{} {
+	return m.Rate
 }
 
 type Runner struct {
@@ -58,10 +80,19 @@ func NewRunner(ctx cli.Context) (Runner, error) {
 	}, nil
 }
 
-// Add task adds the task to the runner and schedules it.
-func (r *Runner) AddTask(task Task) {
+// AddTask adds the task to the runner and schedules it.
+func (r *Runner) AddTask(task Task) error {
+	switch t := task.(type) {
+	case DailyTask:
+		r.scheduler.Every(1).Day().At(task.GetRate().(string)).Do(task.Run)
+	case MinuteTask:
+		r.scheduler.Every(task.GetRate().(uint64)).Minutes().Do(task.Run)
+	default:
+		return fmt.Errorf(`No scheduler for type %T`, t)
+	}
+
 	r.tasks = append(r.tasks, task)
-	r.scheduler.Every(1).Day().At(task.GetTimeOfDay()).Do(task.Run)
+	return nil
 }
 
 func (r *Runner) exposePriorities() priorityToTaskMap {

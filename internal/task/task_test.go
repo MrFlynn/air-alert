@@ -24,9 +24,9 @@ var (
 			return nil
 		},
 	}
-	secondTask = DailyTask{
-		TimeOfDay: "20:30",
-		Priority:  2,
+	secondTask = MinuteTask{
+		Rate:     5,
+		Priority: 2,
 		RunFunc: func() error {
 			secondChan <- time.Now().UnixNano()
 			return nil
@@ -38,7 +38,7 @@ var (
 	}
 )
 
-func TestAddTask(t *testing.T) {
+func TestAddTaskDaily(t *testing.T) {
 	simpleRunner := Runner{
 		scheduler: gocron.NewScheduler(tz),
 		tasks:     make([]Task, 0, 5),
@@ -58,8 +58,49 @@ func TestAddTask(t *testing.T) {
 		t.Errorf(`Expected 1 task, got %d tasks`, count)
 	}
 
+	if !cmp.Equal(task, simpleRunner.tasks[0], cmpopts.IgnoreFields(DailyTask{}, "RunFunc")) {
+		t.Errorf("Expected %+v\nGot %+v", task, simpleRunner.tasks[0])
+	}
+
 	if taskCount := simpleRunner.scheduler.Len(); taskCount != 1 {
 		t.Errorf(`Expected 1 task, got %d tasks`, taskCount)
+	}
+
+	if err := simpleRunner.scheduler.Jobs()[0].Err(); err != nil {
+		t.Errorf(`Got error during job creation: %s`, err)
+	}
+}
+
+func TestAddTaskMinute(t *testing.T) {
+	simpleRunner := Runner{
+		scheduler: gocron.NewScheduler(tz),
+		tasks:     make([]Task, 0, 5),
+	}
+
+	task := MinuteTask{
+		Rate:     5,
+		Priority: 1,
+		RunFunc: func() error {
+			return nil
+		},
+	}
+
+	simpleRunner.AddTask(task)
+
+	if count := len(simpleRunner.tasks); count != 1 {
+		t.Errorf(`Expected 1 task, got %d tasks`, count)
+	}
+
+	if !cmp.Equal(task, simpleRunner.tasks[0], cmpopts.IgnoreFields(MinuteTask{}, "RunFunc")) {
+		t.Errorf("Expected %+v\nGot %+v", task, simpleRunner.tasks[0])
+	}
+
+	if taskCount := simpleRunner.scheduler.Len(); taskCount != 1 {
+		t.Errorf(`Expected 1 task, got %d tasks`, taskCount)
+	}
+
+	if err := simpleRunner.scheduler.Jobs()[0].Err(); err != nil {
+		t.Errorf(`Got error during job creation: %s`, err)
 	}
 }
 
@@ -69,8 +110,8 @@ func TestExposePriorities(t *testing.T) {
 
 	for k, v := range result {
 		if task, exists := expected[k]; exists {
-			if !cmp.Equal(task, v, cmpopts.IgnoreFields(DailyTask{}, "RunFunc")) {
-				t.Errorf("Expected: %+v\nGot:%+v\nAt key %d", task, v, k)
+			if !cmp.Equal(task, v, cmpopts.IgnoreFields(DailyTask{}, "RunFunc"), cmpopts.IgnoreFields(MinuteTask{}, "RunFunc")) {
+				t.Errorf("Expected %+v\nGot%+v\nAt key %d", task, v, k)
 			}
 		} else {
 			t.Errorf(`Key %d in expected not found, but should have been found`, k)
