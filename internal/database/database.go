@@ -43,9 +43,22 @@ func NewController(ctx *cli.Context) (Controller, error) {
 
 // This method tries to safely exchange keys and discards the old one.
 func (c *Controller) exchangeAndRemove(ctx context.Context, originalKey, newKey string) error {
+	res, err := c.db.Exists(ctx, originalKey).Result()
+	if err != nil {
+		if err == redis.Nil {
+			c.db.Rename(ctx, newKey, originalKey)
+			return nil
+		}
+
+		return err
+	} else if res == 0 {
+		c.db.Rename(ctx, newKey, originalKey)
+		return nil
+	}
+
 	originalMoved := originalKey + utils.CreateRandomString(20)
 
-	err := c.db.Rename(ctx, originalKey, originalMoved).Err()
+	err = c.db.Rename(ctx, originalKey, originalMoved).Err()
 	if err != nil {
 		return err
 	}
