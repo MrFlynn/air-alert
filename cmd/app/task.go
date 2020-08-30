@@ -9,7 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func initializeTasks(runner task.Runner) {
+func initializeTasks(runner *task.Runner) {
 	// Air quality refresh task.
 	runner.AddTask(task.MinuteTask{
 		Rate:     5,

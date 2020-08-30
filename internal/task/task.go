@@ -64,18 +64,18 @@ type Runner struct {
 }
 
 // NewRunner initializes a new Runner struct.
-func NewRunner(ctx *cli.Context) (Runner, error) {
+func NewRunner(ctx *cli.Context) (*Runner, error) {
 	tz := ctx.String("timezone")
 
 	location, err := time.LoadLocation(tz)
 	if err != nil {
-		return Runner{}, err
+		return &Runner{}, err
 	}
 
 	scheduler := gocron.NewScheduler(location)
 	tasks := make([]Task, 0, 5)
 
-	return Runner{
+	return &Runner{
 		scheduler: scheduler,
 		tasks:     tasks,
 	}, nil

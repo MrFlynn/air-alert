@@ -25,7 +25,7 @@ type Controller struct {
 }
 
 // NewController creates a new Redis client.
-func NewController(ctx *cli.Context) (Controller, error) {
+func NewController(ctx *cli.Context) (*Controller, error) {
 	db := redis.NewClient(&redis.Options{
 		Addr:     ctx.String("database"),
 		Password: ctx.String("database-password"),
@@ -33,10 +33,10 @@ func NewController(ctx *cli.Context) (Controller, error) {
 	})
 
 	if _, err := db.Ping(ctx.Context).Result(); err != nil {
-		return Controller{}, err
+		return &Controller{}, err
 	}
 
-	return Controller{
+	return &Controller{
 		db: db,
 	}, nil
 }
