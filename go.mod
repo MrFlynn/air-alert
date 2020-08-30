@@ -14,4 +14,5 @@ require (
 	github.com/urfave/cli/v2 v2.2.0
 	go.opentelemetry.io/otel v0.11.0 // indirect
 	golang.org/x/sys v0.0.0-20200826173525-f9321e4c35a6 // indirect
+	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 )

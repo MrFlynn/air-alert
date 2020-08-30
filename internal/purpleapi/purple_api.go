@@ -1,17 +1,23 @@
 package purpleapi
 
 import (
+	"context"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	jsoniter "github.com/json-iterator/go"
+	log "github.com/sirupsen/logrus"
+	"golang.org/x/time/rate"
 )
 
 const apiURL = "https://www.purpleair.com/json"
 
 // Enable encoding/json compat.
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
+var limiter = rate.NewLimiter(rate.Every(10*time.Second), 1)
 
 // Sensor location enum.
 type Location int
@@ -79,13 +85,32 @@ func decode(r io.ReadCloser) ([]Response, error) {
 }
 
 // Get grabs data from Purple Air's API and returns a list of current measurements.
-func Get() ([]Response, error) {
-	resp, err := http.Get(apiURL)
-	if err != nil {
-		return []Response{}, err
+func Get(ctx context.Context) ([]Response, error) {
+	var err error
+	var resp *http.Response
+
+	for i := 0; i < 5; i++ {
+		err = limiter.Wait(ctx)
+		if err != nil {
+			return []Response{}, err
+		}
+
+		resp, err = http.Get(apiURL)
+		if err != nil {
+			return []Response{}, err
+		}
+
+		if resp.StatusCode == http.StatusOK {
+			break
+		}
+
+		log.Debugf(`hit purple air api rate limit. retrying in %.1f seconds`, limiter.Limit())
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return []Response{}, errors.New("failed to get sensor data due to rate limiting")
 	}
 
 	defer resp.Body.Close()
-
 	return decode(resp.Body)
 }
