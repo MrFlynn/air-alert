@@ -2,11 +2,9 @@ package database
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
-	"strings"
 
 	"github.com/go-redis/redis/v8"
 	utils "github.com/mrflynn/air-alert/internal"
@@ -20,20 +18,6 @@ const (
 	numMeasurements  = 10
 	sensorMapKey     = "sensors"
 )
-
-func createRedisKey(id int, path ...string) string {
-	builder := strings.Builder{}
-	builder.Grow((len(path) + 1) * 10) // Assumes that there will be n+1 subkeys each 10 chars long.
-
-	for _, s := range path {
-		builder.WriteString(s)
-		builder.WriteString(":")
-	}
-
-	builder.WriteString(strconv.Itoa(id))
-
-	return builder.String()
-}
 
 // Controller is a container for a Redis client.
 type Controller struct {
@@ -116,23 +100,6 @@ func (c *Controller) SetAirQuality(ctx context.Context, data []purpleapi.Respons
 	return err
 }
 
-func addAQIRequestToPipe(ctx context.Context, pipe redis.Pipeliner, id int) error {
-	key := createRedisKey(id, "data", "aqi")
-	return pipe.LRange(ctx, key, measurementStart, numMeasurements-1).Err()
-}
-
-func getFloatSliceFromRedisList(result redis.Cmder) ([]float64, error) {
-	if cmd, ok := result.(*redis.StringSliceCmd); ok {
-		if measurements, err := cmd.Result(); err == nil {
-			return utils.StringSliceToFloatSlice(measurements), nil
-		} else {
-			return nil, err
-		}
-	}
-
-	return nil, errors.New("could not convert result to float slice")
-}
-
 // RawSensorData contains raw sensor from the Redis datastore.
 type RawSensorData struct {
 	ID  int       `json:"id"`
@@ -165,6 +132,48 @@ func (c *Controller) GetAirQuality(ctx context.Context, id int) (RawSensorData, 
 		ID:  id,
 		AQI: data,
 	}, nil
+}
+
+// GetAQIFromSensorsInRange returns raw sensor data from all sensors within the specified
+// radius around the given coordinates.
+func (c *Controller) GetAQIFromSensorsInRange(ctx context.Context, longitude, latitude, radius float64) ([]RawSensorData, error) {
+	ids, err := c.GetSensorsInRange(ctx, longitude, latitude, radius)
+	if err != nil {
+		return nil, err
+	}
+
+	results, err := c.db.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+		for _, id := range ids {
+			err := addAQIRequestToPipe(ctx, pipe, id)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	rawSensorSlice := make([]RawSensorData, 0, len(ids))
+	for _, result := range results {
+		s, err := getFloatSliceFromRedisList(result)
+		if err != nil {
+			return nil, err
+		}
+
+		id := getIDFromRedisKey(result)
+		if s != nil && id > 0 {
+			rawSensorSlice = append(rawSensorSlice, RawSensorData{
+				ID:  id,
+				AQI: s,
+			})
+		}
+	}
+
+	return rawSensorSlice, nil
 }
 
 // SetSensorLocationData takes an array of Purple Air API response structs and creates a map of all
