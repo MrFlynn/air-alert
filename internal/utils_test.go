@@ -1,6 +1,17 @@
 package internal
 
-import "testing"
+import (
+	"math"
+	"testing"
+
+	"github.com/google/go-cmp/cmp"
+)
+
+var floatComparer = cmp.Comparer(func(x, y float64) bool {
+	delta := math.Abs(x - y)
+	mean := math.Abs(x+y) / 2.0
+	return delta/mean < 0.00001
+})
 
 func TestIsSubSetSlice(t *testing.T) {
 	if !IsSubsetSlice([]string{"a"}, []string{"a", "ba", "b"}) {
@@ -86,5 +97,23 @@ func TestCreateRandomString(t *testing.T) {
 
 	if size := len(str); size != 10 {
 		t.Errorf("Expected string to be 10 bytes, got %d bytes", size)
+	}
+}
+
+func TestStringSliceToFloatSlice(t *testing.T) {
+	result := StringSliceToFloatSlice([]string{"1.0", "2.0", "3.1"})
+
+	expected := []float64{1.0, 2.0, 3.1}
+	if !cmp.Equal(expected, result, floatComparer) {
+		t.Errorf("Expected %v, Got %v", expected, result)
+	}
+}
+
+func TestStringSliceToFloatSliceInvalid(t *testing.T) {
+	result := StringSliceToFloatSlice([]string{"1.32", "hello", "4.1"})
+
+	expected := []float64{1.32, 4.1}
+	if !cmp.Equal(expected, result, floatComparer) {
+		t.Errorf("Expected %v, Got %v", expected, result)
 	}
 }
