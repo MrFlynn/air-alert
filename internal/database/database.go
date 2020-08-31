@@ -2,9 +2,11 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/go-redis/redis/v8"
 	utils "github.com/mrflynn/air-alert/internal"
@@ -18,6 +20,20 @@ const (
 	numMeasurements  = 10
 	sensorMapKey     = "sensors"
 )
+
+func createRedisKey(id int, path ...string) string {
+	builder := strings.Builder{}
+	builder.Grow((len(path) + 1) * 10) // Assumes that there will be n+1 subkeys each 10 chars long.
+
+	for _, s := range path {
+		builder.WriteString(s)
+		builder.WriteString(":")
+	}
+
+	builder.WriteString(strconv.Itoa(id))
+
+	return builder.String()
+}
 
 // Controller is a container for a Redis client.
 type Controller struct {
@@ -87,7 +103,7 @@ func (c *Controller) SetAirQuality(ctx context.Context, data []purpleapi.Respons
 			}
 
 			aqi := resp.PM25
-			key := "measurements:" + strconv.Itoa(id) + ":quality"
+			key := createRedisKey(id, "data", "aqi")
 
 			// Only keep the last 10 measurements (previous 50 minutes of data)
 			pipe.LPush(ctx, key, aqi)
@@ -100,27 +116,41 @@ func (c *Controller) SetAirQuality(ctx context.Context, data []purpleapi.Respons
 	return err
 }
 
-// GetAirQuality gets 10 most recent PM2.5 AQI readings from a specific sensor.
-func (c *Controller) GetAirQuality(ctx context.Context, id int) ([]float64, error) {
-	key := "measurements:" + strconv.Itoa(id) + ":quality"
-	qualityList := make([]float64, 0, numMeasurements)
+func addAQIRequestToPipe(ctx context.Context, pipe redis.Pipeliner, id int) error {
+	key := createRedisKey(id, "data", "aqi")
+	return pipe.LRange(ctx, key, measurementStart, numMeasurements-1).Err()
+}
 
-	measurements, err := c.db.LRange(ctx, key, measurementStart, numMeasurements-1).Result()
-	if err == redis.Nil {
-		return qualityList, fmt.Errorf(`could not find data for sensor %d`, id)
-	} else if err != nil {
-		return qualityList, err
-	}
-
-	for i, stringValue := range measurements {
-		if aqi, err := strconv.ParseFloat(stringValue, 32); err == nil {
-			qualityList = append(qualityList, aqi)
+func getFloatSliceFromRedisList(result redis.Cmder) ([]float64, error) {
+	if cmd, ok := result.(*redis.StringSliceCmd); ok {
+		if measurements, err := cmd.Result(); err == nil {
+			return utils.StringSliceToFloatSlice(measurements), nil
 		} else {
-			log.Errorf(`ID:%d:%d conversion err: %s`, id, i, err)
+			return nil, err
 		}
 	}
 
-	return qualityList, nil
+	return nil, errors.New("could not convert result to float slice")
+}
+
+// GetAirQuality gets 10 most recent PM2.5 AQI readings from a specific sensor.
+func (c *Controller) GetAirQuality(ctx context.Context, id int) ([]float64, error) {
+	results, err := c.db.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+		return addAQIRequestToPipe(ctx, pipe, id)
+	})
+
+	if err == redis.Nil {
+		return nil, fmt.Errorf("could not find data for sensor %d", id)
+	} else if err != nil {
+		return nil, err
+	}
+
+	if len(results) < 1 {
+		return nil, fmt.Errorf("could not find data for sensor %d", id)
+	}
+
+	// Only take first as there should only be one result.
+	return getFloatSliceFromRedisList(results[0])
 }
 
 // SetSensorLocationData takes an array of Purple Air API response structs and creates a map of all
