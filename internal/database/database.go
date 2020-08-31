@@ -133,24 +133,38 @@ func getFloatSliceFromRedisList(result redis.Cmder) ([]float64, error) {
 	return nil, errors.New("could not convert result to float slice")
 }
 
+// RawSensorData contains raw sensor from the Redis datastore.
+type RawSensorData struct {
+	ID  int       `json:"id"`
+	AQI []float64 `json:"aqi"`
+}
+
 // GetAirQuality gets 10 most recent PM2.5 AQI readings from a specific sensor.
-func (c *Controller) GetAirQuality(ctx context.Context, id int) ([]float64, error) {
+func (c *Controller) GetAirQuality(ctx context.Context, id int) (RawSensorData, error) {
 	results, err := c.db.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 		return addAQIRequestToPipe(ctx, pipe, id)
 	})
 
 	if err == redis.Nil {
-		return nil, fmt.Errorf("could not find data for sensor %d", id)
+		return RawSensorData{}, fmt.Errorf("could not find data for sensor %d", id)
 	} else if err != nil {
-		return nil, err
+		return RawSensorData{}, err
 	}
 
 	if len(results) < 1 {
-		return nil, fmt.Errorf("could not find data for sensor %d", id)
+		return RawSensorData{}, fmt.Errorf("could not find data for sensor %d", id)
 	}
 
 	// Only take first as there should only be one result.
-	return getFloatSliceFromRedisList(results[0])
+	data, err := getFloatSliceFromRedisList(results[0])
+	if err != nil {
+		return RawSensorData{}, err
+	}
+
+	return RawSensorData{
+		ID:  id,
+		AQI: data,
+	}, nil
 }
 
 // SetSensorLocationData takes an array of Purple Air API response structs and creates a map of all
