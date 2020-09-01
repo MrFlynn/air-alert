@@ -2,13 +2,12 @@ package database
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/go-redis/redis/v8"
-	utils "github.com/mrflynn/air-alert/internal"
 )
 
 var (
@@ -17,22 +16,33 @@ var (
 )
 
 func addAQIRequestToPipe(ctx context.Context, pipe redis.Pipeliner, id int) error {
-	key := createRedisKey(id, "data", "aqi")
-	return pipe.LRange(ctx, key, measurementStart, numMeasurements-1).Err()
+	key := createRedisKey(id, "data", "pm25")
+	return pipe.ZRevRangeWithScores(ctx, key, 0, -1).Err()
 }
 
-func getFloatSliceFromRedisList(result redis.Cmder) ([]float64, error) {
-	switch result.(type) {
-	case *redis.StringSliceCmd:
-		if measurements, err := result.(*redis.StringSliceCmd).Result(); err == nil {
-			return utils.StringSliceToFloatSlice(measurements), nil
+func getTimeIndexFromSortedSet(cmd redis.Cmder) ([]RawQualityData, error) {
+	switch c := cmd.(type) {
+	case *redis.ZSliceCmd:
+		if set, err := c.Result(); err == nil {
+			timeIndex := make([]RawQualityData, 0, len(set))
+
+			for _, item := range set {
+				if value, err := strconv.ParseFloat(item.Member.(string), 32); err == nil {
+					timeIndex = append(timeIndex, RawQualityData{
+						Time: int64(item.Score),
+						PM25: value,
+					})
+				}
+			}
+
+			return timeIndex, nil
 		} else {
 			return nil, err
 		}
 	case *redis.StatusCmd:
 		return nil, nil
 	default:
-		return nil, errors.New("could not convert result to float slice")
+		return nil, fmt.Errorf("could not find valid conversion for %T", c)
 	}
 }
 

@@ -2,9 +2,11 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	utils "github.com/mrflynn/air-alert/internal"
@@ -13,11 +15,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const (
-	measurementStart = 0
-	numMeasurements  = 10
-	sensorMapKey     = "sensors"
-)
+const sensorMapKey = "sensors"
 
 // Controller is a container for a Redis client.
 type Controller struct {
@@ -79,6 +77,8 @@ func (c *Controller) exchangeAndRemove(ctx context.Context, originalKey, newKey 
 // SetAirQuality takes an array of Purple Air API response structs and stores the most recent
 // PM2.5 AQI readings from those sensors.
 func (c *Controller) SetAirQuality(ctx context.Context, data []purpleapi.Response) error {
+	cutoffTime := strconv.FormatInt(time.Now().Add(-60*time.Minute).Unix(), 10)
+
 	_, err := c.db.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 		for _, resp := range data {
 			// We only want sensors that are outside.
@@ -89,11 +89,16 @@ func (c *Controller) SetAirQuality(ctx context.Context, data []purpleapi.Respons
 				}
 
 				aqi := resp.PM25
-				key := createRedisKey(id, "data", "aqi")
+				key := createRedisKey(id, "data", "pm25")
 
-				// Only keep the last 10 measurements (previous 50 minutes of data)
-				pipe.LPush(ctx, key, aqi)
-				pipe.LTrim(ctx, key, measurementStart, numMeasurements-1)
+				// Add aqi with score being equal to reading capture time.
+				pipe.ZAddNX(ctx, key, &redis.Z{
+					Score:  float64(resp.LastUpdated),
+					Member: aqi,
+				})
+
+				// This removes all measurements older than 60 minutes.
+				pipe.ZRemRangeByScore(ctx, key, "0", cutoffTime)
 			}
 		}
 
@@ -105,8 +110,14 @@ func (c *Controller) SetAirQuality(ctx context.Context, data []purpleapi.Respons
 
 // RawSensorData contains raw sensor from the Redis datastore.
 type RawSensorData struct {
-	ID  int       `json:"id"`
-	AQI []float64 `json:"aqi"`
+	ID   int              `json:"sensor_id"`
+	Data []RawQualityData `json:"measurements"`
+}
+
+// RawQualityData contains a time stamp the corresponding pm2.5 measurement.
+type RawQualityData struct {
+	Time int64   `json:"time"`
+	PM25 float64 `json:"pm25"`
 }
 
 // GetAirQuality gets 10 most recent PM2.5 AQI readings from a specific sensor.
@@ -126,14 +137,18 @@ func (c *Controller) GetAirQuality(ctx context.Context, id int) (RawSensorData, 
 	}
 
 	// Only take first as there should only be one result.
-	data, err := getFloatSliceFromRedisList(results[0])
+	data, err := getTimeIndexFromSortedSet(results[0])
 	if err != nil {
 		return RawSensorData{}, err
 	}
 
+	if data == nil {
+		return RawSensorData{}, errors.New("could not get time indexed data from query")
+	}
+
 	return RawSensorData{
-		ID:  id,
-		AQI: data,
+		ID:   id,
+		Data: data,
 	}, nil
 }
 
@@ -162,16 +177,16 @@ func (c *Controller) GetAQIFromSensorsInRange(ctx context.Context, longitude, la
 
 	rawSensorSlice := make([]RawSensorData, 0, len(ids))
 	for _, result := range results {
-		s, err := getFloatSliceFromRedisList(result)
+		data, err := getTimeIndexFromSortedSet(result)
 		if err != nil {
 			return nil, err
 		}
 
 		id := getIDFromRedisKey(result)
-		if s != nil && id > 0 {
+		if data != nil && id > 0 {
 			rawSensorSlice = append(rawSensorSlice, RawSensorData{
-				ID:  id,
-				AQI: s,
+				ID:   id,
+				Data: data,
 			})
 		}
 	}
