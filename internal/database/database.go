@@ -81,17 +81,20 @@ func (c *Controller) exchangeAndRemove(ctx context.Context, originalKey, newKey 
 func (c *Controller) SetAirQuality(ctx context.Context, data []purpleapi.Response) error {
 	_, err := c.db.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 		for _, resp := range data {
-			id, err := getPrimaryKey(reflect.ValueOf(resp))
-			if err != nil {
-				return err
+			// We only want sensors that are outside.
+			if resp.Location == purpleapi.Outside {
+				id, err := getPrimaryKey(reflect.ValueOf(resp))
+				if err != nil {
+					return err
+				}
+
+				aqi := resp.PM25
+				key := createRedisKey(id, "data", "aqi")
+
+				// Only keep the last 10 measurements (previous 50 minutes of data)
+				pipe.LPush(ctx, key, aqi)
+				pipe.LTrim(ctx, key, measurementStart, numMeasurements-1)
 			}
-
-			aqi := resp.PM25
-			key := createRedisKey(id, "data", "aqi")
-
-			// Only keep the last 10 measurements (previous 50 minutes of data)
-			pipe.LPush(ctx, key, aqi)
-			pipe.LTrim(ctx, key, measurementStart, numMeasurements-1)
 		}
 
 		return nil
@@ -183,16 +186,19 @@ func (c *Controller) SetSensorLocationData(ctx context.Context, data []purpleapi
 
 	_, err := c.db.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 		for _, resp := range data {
-			id, err := getPrimaryKey(reflect.ValueOf(resp))
-			if err != nil {
-				return err
-			}
+			// We only want primary, outside sensors.
+			if resp.Location == purpleapi.Outside && resp.ParentID == 0 {
+				id, err := getPrimaryKey(reflect.ValueOf(resp))
+				if err != nil {
+					return err
+				}
 
-			pipe.GeoAdd(ctx, temporaryKey, &redis.GeoLocation{
-				Name:      strconv.Itoa(id),
-				Longitude: resp.Longitude,
-				Latitude:  resp.Latitude,
-			})
+				pipe.GeoAdd(ctx, temporaryKey, &redis.GeoLocation{
+					Name:      strconv.Itoa(id),
+					Longitude: resp.Longitude,
+					Latitude:  resp.Latitude,
+				})
+			}
 		}
 
 		return nil
