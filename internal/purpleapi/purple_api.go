@@ -15,9 +15,13 @@ import (
 
 const apiURL = "https://www.purpleair.com/json"
 
-// Enable encoding/json compat.
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
-var limiter = rate.NewLimiter(rate.Every(10*time.Second), 1)
+var (
+	// Enable encoding/json compat.
+	json = jsoniter.ConfigCompatibleWithStandardLibrary
+
+	// Rate limiter that only allows one request per 10 seconds.
+	limiter = rate.NewLimiter(rate.Every(10*time.Second), 1)
+)
 
 // Sensor location enum.
 type Location int
@@ -45,12 +49,13 @@ type outerResponse struct {
 
 // Response encodes the relevant data from the Purple Air api.
 type Response struct {
-	ID        int      `json:"ID" db:"primary_key"`
-	ParentID  int      `json:"ParentID,omitempty" db:"append_only"`
-	Location  Location `json:"DEVICE_LOCATIONTYPE,omitempty" db:"ignore"`
-	Latitude  float64  `json:"Lat" db:"value,geo"`
-	Longitude float64  `json:"Lon" db:"value,geo"`
-	PM25      float32  `json:"PM2_5Value,string" db:"value,quality"`
+	ID          int      `json:"ID" db:"primary_key"`
+	ParentID    int      `json:"ParentID,omitempty" db:"append_only"`
+	Location    Location `json:"DEVICE_LOCATIONTYPE,omitempty" db:"ignore"`
+	LastUpdated int64    `json:"LastSeen" db:"value,quality"`
+	Latitude    float64  `json:"Lat" db:"value,geo"`
+	Longitude   float64  `json:"Lon" db:"value,geo"`
+	PM25        float32  `json:"PM2_5Value,string" db:"value,quality"`
 }
 
 // UnmarshalJSON implements a custom unmarshaller for the Response type.

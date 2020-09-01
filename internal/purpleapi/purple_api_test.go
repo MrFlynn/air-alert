@@ -12,19 +12,21 @@ import (
 var (
 	expectedResponse = []Response{
 		{
-			ID:        14633,
-			Location:  Outside,
-			Latitude:  37.275561,
-			Longitude: -121.964134,
-			PM25:      24.68,
+			ID:          14633,
+			Location:    Outside,
+			Latitude:    37.275561,
+			LastUpdated: 1598334840,
+			Longitude:   -121.964134,
+			PM25:        24.68,
 		},
 		{
-			ID:        14634,
-			ParentID:  14633,
-			Location:  Unknown,
-			Latitude:  37.275561,
-			Longitude: -121.964134,
-			PM25:      25.12,
+			ID:          14634,
+			ParentID:    14633,
+			Location:    Unknown,
+			LastUpdated: 1598334840,
+			Latitude:    37.275561,
+			Longitude:   -121.964134,
+			PM25:        25.12,
 		},
 	}
 	testData = `{
