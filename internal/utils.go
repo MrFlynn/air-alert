@@ -3,7 +3,6 @@ package internal
 import (
 	"math/rand"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -16,19 +15,6 @@ const (
 )
 
 var source = rand.NewSource(time.Now().UnixNano())
-
-// StringSliceToFloatSlice takes a slice of strings and converts each to a float64.
-func StringSliceToFloatSlice(s []string) []float64 {
-	f := make([]float64, 0, len(s))
-
-	for _, i := range s {
-		if c, err := strconv.ParseFloat(i, 32); err == nil {
-			f = append(f, c)
-		}
-	}
-
-	return f
-}
 
 // IsIsSubsetSlice checks if the first slice is a subset of the
 // second one.

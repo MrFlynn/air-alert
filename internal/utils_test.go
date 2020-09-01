@@ -99,21 +99,3 @@ func TestCreateRandomString(t *testing.T) {
 		t.Errorf("Expected string to be 10 bytes, got %d bytes", size)
 	}
 }
-
-func TestStringSliceToFloatSlice(t *testing.T) {
-	result := StringSliceToFloatSlice([]string{"1.0", "2.0", "3.1"})
-
-	expected := []float64{1.0, 2.0, 3.1}
-	if !cmp.Equal(expected, result, floatComparer) {
-		t.Errorf("Expected %v, Got %v", expected, result)
-	}
-}
-
-func TestStringSliceToFloatSliceInvalid(t *testing.T) {
-	result := StringSliceToFloatSlice([]string{"1.32", "hello", "4.1"})
-
-	expected := []float64{1.32, 4.1}
-	if !cmp.Equal(expected, result, floatComparer) {
-		t.Errorf("Expected %v, Got %v", expected, result)
-	}
-}
