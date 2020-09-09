@@ -45,7 +45,7 @@ func getAQIReadings(ctx *fiber.Ctx, db *database.Controller) {
 	err = json.NewEncoder(buff).Encode(results)
 
 	if err != nil {
-		log.Error("error in marshalling API response data: %s", err)
+		log.Errorf("error in marshalling API response data: %s", err)
 		ctx.Status(fiber.StatusInternalServerError).SendString("error marshalling json object")
 
 		return
