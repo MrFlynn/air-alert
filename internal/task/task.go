@@ -1,19 +1,54 @@
 package task
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"time"
 
 	"github.com/go-co-op/gocron"
+	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
 // Task interface declares the methods that a Task subtype should implement.
 type Task interface {
-	Run() error
+	Run(context.Context) error
 	GetPriority() uint
 	GetRate() interface{}
+	GetTTL() time.Duration
+	SkipStartup() bool
+}
+
+// WrapTimeout wraps the `Run` interface method with a timeout-dependent context.
+func WrapTimeout(t Task, noLog bool) error {
+	var err error
+
+	// Create context without timeout equal to given time-to-live.
+	ctx, cancel := context.WithTimeout(context.Background(), t.GetTTL())
+	defer cancel()
+
+	taskTermination := make(chan bool, 1)
+
+	go func() {
+		err = t.Run(ctx)
+		taskTermination <- true
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-taskTermination:
+		if err != nil {
+			if !noLog {
+				log.Error(err)
+			}
+
+			return err
+		}
+	}
+
+	return nil
 }
 
 type priorityToTaskMap map[uint][]Task
@@ -22,39 +57,71 @@ type priorityToTaskMap map[uint][]Task
 type DailyTask struct {
 	TimeOfDay string
 	Priority  uint
-	RunFunc   func() error
+	TTL       time.Duration
+	SkipStart bool
+	RunFunc   func(context.Context) error
 }
 
-func (d DailyTask) Run() error {
-	return d.RunFunc()
+// Run wraps the internal RunFunc field. This method runs it and returns the result.
+func (d DailyTask) Run(ctx context.Context) error {
+	return d.RunFunc(ctx)
 }
 
+// GetPriority returns the task priority.
 func (d DailyTask) GetPriority() uint {
 	return d.Priority
 }
 
+// GetRate returns the repeat frequency for the task.
 func (d DailyTask) GetRate() interface{} {
 	return d.TimeOfDay
+}
+
+// GetTTL returns the maximum duration of the task. This parameter is to prevent the task
+// from running too long if it hangs.
+func (d DailyTask) GetTTL() time.Duration {
+	return d.TTL
+}
+
+// SkipStartup returns whether or not the task should be skipped during the initial startup phase.
+func (d DailyTask) SkipStartup() bool {
+	return d.SkipStart
 }
 
 // MinuteTask is a Task that is run every n minutes where Rate defines
 // how often the task is run.
 type MinuteTask struct {
-	Rate     uint64
-	Priority uint
-	RunFunc  func() error
+	Rate      uint64
+	Priority  uint
+	TTL       time.Duration
+	SkipStart bool
+	RunFunc   func(context.Context) error
 }
 
-func (m MinuteTask) Run() error {
-	return m.RunFunc()
+// Run wraps the internal RunFunc field. This method runs it and returns the result.
+func (m MinuteTask) Run(ctx context.Context) error {
+	return m.RunFunc(ctx)
 }
 
+// GetPriority returns the task priority.
 func (m MinuteTask) GetPriority() uint {
 	return m.Priority
 }
 
+// GetRate returns the repeat frequency for the task.
 func (m MinuteTask) GetRate() interface{} {
 	return m.Rate
+}
+
+// GetTTL returns the maximum duration of the task. This parameter is to prevent the task
+// from running too long if it hangs.
+func (m MinuteTask) GetTTL() time.Duration {
+	return m.TTL
+}
+
+// SkipStartup returns whether or not the task should be skipped during the initial startup phase.
+func (m MinuteTask) SkipStartup() bool {
+	return m.SkipStart
 }
 
 // Runner is the main background task runner in this package.
@@ -85,9 +152,9 @@ func NewRunner(ctx *cli.Context) (*Runner, error) {
 func (r *Runner) AddTask(task Task) error {
 	switch t := task.(type) {
 	case DailyTask:
-		r.scheduler.Every(1).Day().At(task.GetRate().(string)).Do(task.Run)
+		r.scheduler.Every(1).Day().At(task.GetRate().(string)).Do(WrapTimeout, task, false)
 	case MinuteTask:
-		r.scheduler.Every(task.GetRate().(uint64)).Minutes().Do(task.Run)
+		r.scheduler.Every(task.GetRate().(uint64)).Minutes().Do(WrapTimeout, task, false)
 	default:
 		return fmt.Errorf(`No scheduler for type %T`, t)
 	}
@@ -121,8 +188,10 @@ func (r *Runner) runAllTasksInOrder() error {
 
 	for _, priority := range orderedPriorities {
 		for _, task := range exposedPriorities[priority] {
-			if err := task.Run(); err != nil {
-				return err
+			if !task.SkipStartup() {
+				if err := WrapTimeout(task, true); err != nil {
+					return err
+				}
 			}
 		}
 	}
