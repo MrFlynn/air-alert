@@ -2,9 +2,6 @@ package router
 
 import (
 	"context"
-	"fmt"
-	"os"
-	"os/signal"
 	"time"
 
 	"github.com/gofiber/fiber"
@@ -41,9 +38,6 @@ func (r *Router) addRoutes() {
 func (r *Router) Run() error {
 	var err error
 
-	extSignalChan := make(chan os.Signal, 1)
-	signal.Notify(extSignalChan, os.Interrupt, os.Kill)
-
 	r.addRoutes()
 
 	go func() {
@@ -51,14 +45,14 @@ func (r *Router) Run() error {
 		err = r.app.Listen(r.Port)
 	}()
 
-	if err != nil {
-		return err
-	}
+	return err
+}
 
-	<-extSignalChan
+// Shutdown attempts to safely shutdown the router.
+func (r *Router) Shutdown() error {
+	var err error
 
-	fmt.Printf("\n")
-
+	// Create shutdown timeout.
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
