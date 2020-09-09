@@ -4,14 +4,16 @@ import (
 	"os"
 
 	"github.com/mrflynn/air-alert/internal/database"
+	"github.com/mrflynn/air-alert/internal/router"
 	"github.com/mrflynn/air-alert/internal/task"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
 var (
-	db     database.Controller
-	runner task.Runner
+	db     *database.Controller
+	runner *task.Runner
+	server *router.Router
 )
 
 func initializeApp(ctx *cli.Context) error {
@@ -22,10 +24,12 @@ func initializeApp(ctx *cli.Context) error {
 		return err
 	}
 
-	runner, err := task.NewRunner(ctx)
+	runner, err = task.NewRunner(ctx)
 	if err != nil {
 		return err
 	}
+
+	server = router.NewRouter(ctx, db)
 
 	initializeTasks(runner)
 
@@ -36,6 +40,10 @@ func run(ctx *cli.Context) error {
 	initializeApp(ctx)
 
 	if err := runner.Start(); err != nil {
+		return err
+	}
+
+	if err := server.Run(); err != nil {
 		return err
 	}
 
@@ -57,7 +65,7 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:    "database-password",
-				Aliases: []string{"p"},
+				Aliases: []string{"pass"},
 				Usage:   "Password for database",
 				Value:   "",
 			},
@@ -72,6 +80,12 @@ func main() {
 				Aliases: []string{"tz"},
 				Usage:   "Default timezone",
 				Value:   "UTC",
+			},
+			&cli.IntFlag{
+				Name:    "port",
+				Aliases: []string{"p"},
+				Usage:   "Port for web server",
+				Value:   3000,
 			},
 		},
 		Action: run,
