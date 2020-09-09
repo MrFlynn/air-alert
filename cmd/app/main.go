@@ -42,10 +42,13 @@ func run(ctx *cli.Context) error {
 	// External signal receiver.
 	stopSignal := make(chan os.Signal, 1)
 	signal.Notify(stopSignal, os.Interrupt, os.Kill)
+
 	initializeApp(ctx)
 
-	if err := runner.Start(); err != nil {
-		return err
+	if !ctx.Bool("skip-loading") {
+		if err := runner.Start(); err != nil {
+			return err
+		}
 	}
 
 	if err := server.Run(); err != nil {
@@ -98,6 +101,11 @@ func main() {
 				Aliases: []string{"p"},
 				Usage:   "Port for web server",
 				Value:   3000,
+			},
+			&cli.BoolFlag{
+				Name:  "skip-loading",
+				Usage: "Skip loading data into datastore",
+				Value: false,
 			},
 		},
 		Action: run,
