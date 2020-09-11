@@ -23,12 +23,15 @@ var (
 	limiter = rate.NewLimiter(rate.Every(10*time.Second), 1)
 )
 
-// Sensor location enum.
+// Location contains information about where a sensor is located.
 type Location int
 
 const (
+	// Unknown is the default sensor location. If the API has no location data, it defaults to this.
 	Unknown Location = iota
+	// Outside is for sensors located outdoors.
 	Outside
+	// Inside is for sensors located indoors.
 	Inside
 )
 

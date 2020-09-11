@@ -102,11 +102,11 @@ func getPrimaryKey(resp reflect.Value) (int, error) {
 
 	if id, ok := matrix.selectFirst(key).(int); ok {
 		return id, nil
-	} else {
-		// Fall back to primary key if type assertion fails.
-		if backup, ok := primaryKey.selectFirst("id").(int); ok {
-			return backup, nil
-		}
+	}
+
+	// Fall back to primary key if type assertion fails.
+	if backup, ok := primaryKey.selectFirst("id").(int); ok {
+		return backup, nil
 	}
 
 	// If all type assertions fail return a default and an error.

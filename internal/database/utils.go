@@ -23,7 +23,8 @@ func addAQIRequestToPipe(ctx context.Context, pipe redis.Pipeliner, id int) erro
 func getTimeIndexFromSortedSet(cmd redis.Cmder) ([]RawQualityData, error) {
 	switch c := cmd.(type) {
 	case *redis.ZSliceCmd:
-		if set, err := c.Result(); err == nil {
+		set, err := c.Result()
+		if err == nil {
 			timeIndex := make([]RawQualityData, 0, len(set))
 
 			for _, item := range set {
@@ -36,9 +37,9 @@ func getTimeIndexFromSortedSet(cmd redis.Cmder) ([]RawQualityData, error) {
 			}
 
 			return timeIndex, nil
-		} else {
-			return nil, err
 		}
+
+		return nil, err
 	case *redis.StatusCmd:
 		return nil, nil
 	default:
