@@ -16,3 +16,9 @@
 
 # Editor
 *.swp
+
+# Configs
+*.toml
+
+# Executables and build artifacts.
+air-alert
