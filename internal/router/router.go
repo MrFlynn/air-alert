@@ -7,7 +7,7 @@ import (
 	"github.com/gofiber/fiber"
 	"github.com/mrflynn/air-alert/internal/database"
 	log "github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/viper"
 )
 
 // Router is the main application HTTP router.
@@ -19,9 +19,9 @@ type Router struct {
 }
 
 // NewRouter creates a new Router struct from the given context.
-func NewRouter(ctx *cli.Context, db *database.Controller) *Router {
+func NewRouter(db *database.Controller) *Router {
 	return &Router{
-		Port: ctx.Int("port"),
+		Port: viper.GetInt("port"),
 		app:  fiber.New(),
 		db:   db,
 	}

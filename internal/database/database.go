@@ -12,7 +12,7 @@ import (
 	utils "github.com/mrflynn/air-alert/internal"
 	"github.com/mrflynn/air-alert/internal/purpleapi"
 	log "github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/viper"
 )
 
 const sensorMapKey = "sensors"
@@ -23,14 +23,14 @@ type Controller struct {
 }
 
 // NewController creates a new Redis client.
-func NewController(ctx *cli.Context) (*Controller, error) {
+func NewController() (*Controller, error) {
 	db := redis.NewClient(&redis.Options{
-		Addr:     ctx.String("database"),
-		Password: ctx.String("database-password"),
-		DB:       ctx.Int("database-id"),
+		Addr:     viper.GetString("database"),
+		Password: viper.GetString("database-password"),
+		DB:       viper.GetInt("database-id"),
 	})
 
-	if _, err := db.Ping(ctx.Context).Result(); err != nil {
+	if _, err := db.Ping(context.Background()).Result(); err != nil {
 		return &Controller{}, err
 	}
 

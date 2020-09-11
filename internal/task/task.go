@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-co-op/gocron"
 	log "github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/viper"
 )
 
 // Task interface declares the methods that a Task subtype should implement.
@@ -131,10 +131,8 @@ type Runner struct {
 }
 
 // NewRunner initializes a new Runner struct.
-func NewRunner(ctx *cli.Context) (*Runner, error) {
-	tz := ctx.String("timezone")
-
-	location, err := time.LoadLocation(tz)
+func NewRunner() (*Runner, error) {
+	location, err := time.LoadLocation(viper.GetString("timezone"))
 	if err != nil {
 		return &Runner{}, err
 	}
