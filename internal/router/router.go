@@ -21,9 +21,11 @@ type Router struct {
 // NewRouter creates a new Router struct from the given context.
 func NewRouter(db *database.Controller) *Router {
 	return &Router{
-		Port: viper.GetInt("port"),
-		app:  fiber.New(),
-		db:   db,
+		Port: viper.GetInt("web.port"),
+		app: fiber.New(&fiber.Settings{
+			DisableStartupMessage: true,
+		}),
+		db: db,
 	}
 }
 

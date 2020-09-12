@@ -44,11 +44,16 @@ func init() {
 	viper.SetDefault("author", "Nick Pleatsikas <nick@pleatsikas.me>")
 
 	// Default settings.
-	viper.SetDefault("database", ":6379")
-	viper.SetDefault("database-password", "")
-	viper.SetDefault("database-id", 0)
+	viper.SetDefault("database.redis.addr", ":6379")
+	viper.SetDefault("database.redis.password", "")
+	viper.SetDefault("database.redis.id", 0)
 	viper.SetDefault("timezone", "UTC")
-	viper.SetDefault("port", 3000)
+	viper.SetDefault("web.port", 3000)
+
+	log.SetFormatter(&log.TextFormatter{
+		FullTimestamp:          true,
+		DisableLevelTruncation: true,
+	})
 }
 
 func initConfig() {

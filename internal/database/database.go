@@ -25,9 +25,9 @@ type Controller struct {
 // NewController creates a new Redis client.
 func NewController() (*Controller, error) {
 	db := redis.NewClient(&redis.Options{
-		Addr:     viper.GetString("database"),
-		Password: viper.GetString("database-password"),
-		DB:       viper.GetInt("database-id"),
+		Addr:     viper.GetString("database.redis.addr"),
+		Password: viper.GetString("database.redis.password"),
+		DB:       viper.GetInt("database.redis.id"),
 	})
 
 	if _, err := db.Ping(context.Background()).Result(); err != nil {
