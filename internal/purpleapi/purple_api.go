@@ -58,7 +58,7 @@ type Response struct {
 	LastUpdated int64    `json:"LastSeen" db:"value,quality"`
 	Latitude    float64  `json:"Lat" db:"value,geo"`
 	Longitude   float64  `json:"Lon" db:"value,geo"`
-	PM25        float32  `json:"PM2_5Value,string" db:"value,quality"`
+	PM25        float64  `json:"PM2_5Value,string" db:"value,quality"`
 }
 
 // UnmarshalJSON implements a custom unmarshaller for the Response type.

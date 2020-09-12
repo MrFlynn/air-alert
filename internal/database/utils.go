@@ -16,35 +16,61 @@ var (
 )
 
 func addAQIRequestToPipe(ctx context.Context, pipe redis.Pipeliner, id int) error {
-	key := createRedisKey(id, "data", "pm25")
-	return pipe.ZRevRangeWithScores(ctx, key, 0, -1).Err()
+	if err := pipe.ZRevRangeWithScores(ctx, createRedisKey(id, "data", "pm25"), 0, -1).Err(); err != nil {
+		return err
+	}
+
+	if err := pipe.ZRevRangeWithScores(ctx, createRedisKey(id, "data", "aqi"), 0, -1).Err(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func getTimeIndexFromSortedSet(cmd redis.Cmder) ([]RawQualityData, error) {
-	switch c := cmd.(type) {
-	case *redis.ZSliceCmd:
-		set, err := c.Result()
-		if err == nil {
-			timeIndex := make([]RawQualityData, 0, len(set))
+func marshalRawDataFromResult(cmds []redis.Cmder) (map[int]*RawQualityData, error) {
+	// The the key for this map is made by adding the time index + the sensor id. Since each
+	// sensor ID is unique and there is only one measurement per time index, this will yield
+	// unique, reversible keys.
+	resultLookup := make(map[int]*RawQualityData, len(cmds)-1)
 
-			for _, item := range set {
-				if value, err := strconv.ParseFloat(item.Member.(string), 32); err == nil {
-					timeIndex = append(timeIndex, RawQualityData{
-						Time: int64(item.Score),
-						PM25: value,
-					})
-				}
+	for _, c := range cmds {
+		switch cmd := c.(type) {
+		case *redis.ZSliceCmd:
+			id, path := getFullIDFromRedisKey(cmd)
+
+			set, err := cmd.Result()
+			if err != nil {
+				continue
 			}
 
-			return timeIndex, nil
-		}
+			for _, item := range set {
+				value, err := strconv.ParseFloat(item.Member.(string), 64)
+				if err != nil {
+					continue
+				}
 
-		return nil, err
-	case *redis.StatusCmd:
-		return nil, nil
-	default:
-		return nil, fmt.Errorf("could not find valid conversion for %T", c)
+				key := id + int(item.Score)
+
+				// Allocate the struct if it doesn't exist.
+				if _, ok := resultLookup[key]; !ok {
+					resultLookup[key] = &RawQualityData{Time: int(item.Score)}
+				}
+
+				if path[len(path)-1] == "pm25" {
+					resultLookup[key].PM25 = value
+				} else if path[len(path)-1] == "aqi" {
+					resultLookup[key].AQI = value
+				}
+			}
+		// These will sometimes show up in pipeline results. Just skip them.
+		case *redis.StatusCmd:
+			continue
+		default:
+			return resultLookup, fmt.Errorf("could not find valid conversion for %T", cmd)
+		}
 	}
+
+	return resultLookup, nil
 }
 
 func createRedisKey(id int, path ...string) string {
@@ -62,16 +88,26 @@ func createRedisKey(id int, path ...string) string {
 }
 
 func getIDFromRedisKey(cmd redis.Cmder) int {
-	for _, arg := range cmd.Args() {
-		if argString, ok := arg.(string); ok {
-			for _, item := range splitCmdRegex.Split(argString, -1) {
-				if keyRegex.MatchString(item) {
-					id, _ := strconv.Atoi(item)
-					return id
+	id, _ := getFullIDFromRedisKey(cmd)
+	return id
+}
+
+func getFullIDFromRedisKey(cmd redis.Cmder) (int, []string) {
+	if len(cmd.Args()) < 2 {
+		return -1, nil
+	}
+
+	// The key should always be the second argument.
+	if key, ok := cmd.Args()[1].(string); ok {
+		path := strings.Split(key, ":")
+		for i, element := range path {
+			if keyRegex.MatchString(element) {
+				if id, err := strconv.Atoi(element); err == nil {
+					return id, append(path[:i], path[i+1:]...)
 				}
 			}
 		}
 	}
 
-	return -1
+	return -1, nil
 }

@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -11,6 +10,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	utils "github.com/mrflynn/air-alert/internal"
 	"github.com/mrflynn/air-alert/internal/purpleapi"
+	"github.com/mrflynn/go-aqi"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -88,17 +88,26 @@ func (c *Controller) SetAirQuality(ctx context.Context, data []purpleapi.Respons
 					return err
 				}
 
-				aqi := resp.PM25
-				key := createRedisKey(id, "data", "pm25")
+				pm25Key := createRedisKey(id, "data", "pm25")
+				aqiKey := createRedisKey(id, "data", "aqi")
 
-				// Add aqi with score being equal to reading capture time.
-				pipe.ZAddNX(ctx, key, &redis.Z{
+				// Add pm2.5 value with score being equal to reading capture time.
+				pipe.ZAddNX(ctx, pm25Key, &redis.Z{
 					Score:  float64(resp.LastUpdated),
-					Member: aqi,
+					Member: resp.PM25,
 				})
 
+				// Add calculated AQI if the result is valid.
+				if aqi, err := aqi.Calculate(aqi.PM25{Concentration: resp.PM25}); err == nil {
+					pipe.ZAddNX(ctx, aqiKey, &redis.Z{
+						Score:  float64(resp.LastUpdated),
+						Member: aqi.AQI,
+					})
+				}
+
 				// This removes all measurements older than 60 minutes.
-				pipe.ZRemRangeByScore(ctx, key, "0", cutoffTime)
+				pipe.ZRemRangeByScore(ctx, pm25Key, "0", cutoffTime)
+				pipe.ZRemRangeByScore(ctx, aqiKey, "0", cutoffTime)
 			}
 		}
 
@@ -116,51 +125,54 @@ type RawSensorData struct {
 
 // RawQualityData contains a time stamp the corresponding pm2.5 measurement.
 type RawQualityData struct {
-	Time int64   `json:"time"`
+	Time int     `json:"time"`
 	PM25 float64 `json:"pm25"`
+	AQI  float64 `json:"aqi,omitempty"`
 }
 
 // GetAirQuality gets 10 most recent PM2.5 AQI readings from a specific sensor.
-func (c *Controller) GetAirQuality(ctx context.Context, id int) (RawSensorData, error) {
+func (c *Controller) GetAirQuality(ctx context.Context, id int) (*RawSensorData, error) {
 	results, err := c.db.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 		return addAQIRequestToPipe(ctx, pipe, id)
 	})
 
 	if err == redis.Nil {
-		return RawSensorData{}, fmt.Errorf("could not find data for sensor %d", id)
+		return nil, fmt.Errorf("could not find data for sensor %d", id)
 	} else if err != nil {
-		return RawSensorData{}, err
+		return nil, err
 	}
 
 	if len(results) < 1 {
-		return RawSensorData{}, fmt.Errorf("could not find data for sensor %d", id)
+		return nil, fmt.Errorf("could not find data for sensor %d", id)
 	}
 
 	// Only take first as there should only be one result.
-	data, err := getTimeIndexFromSortedSet(results[0])
+	data, err := marshalRawDataFromResult(results)
 	if err != nil {
-		return RawSensorData{}, err
+		return nil, err
 	}
 
-	if data == nil {
-		return RawSensorData{}, errors.New("could not get time indexed data from query")
+	for key, item := range data {
+		if id == (key - item.Time) {
+			return &RawSensorData{
+				ID:   key - item.Time,
+				Data: []RawQualityData{*item},
+			}, nil
+		}
 	}
 
-	return RawSensorData{
-		ID:   id,
-		Data: data,
-	}, nil
+	return nil, fmt.Errorf("could not get sensor data for sensor id: %d", id)
 }
 
 // GetAQIFromSensorsInRange returns raw sensor data from all sensors within the specified
 // radius around the given coordinates.
-func (c *Controller) GetAQIFromSensorsInRange(ctx context.Context, longitude, latitude, radius float64) ([]RawSensorData, error) {
+func (c *Controller) GetAQIFromSensorsInRange(ctx context.Context, longitude, latitude, radius float64) ([]*RawSensorData, error) {
 	ids, err := c.GetSensorsInRange(ctx, longitude, latitude, radius)
 	if err != nil {
 		return nil, err
 	}
 
-	results, err := c.db.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+	pipelineResults, err := c.db.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 		for _, id := range ids {
 			err := addAQIRequestToPipe(ctx, pipe, id)
 			if err != nil {
@@ -175,20 +187,28 @@ func (c *Controller) GetAQIFromSensorsInRange(ctx context.Context, longitude, la
 		return nil, err
 	}
 
-	rawSensorSlice := make([]RawSensorData, 0, len(ids))
-	for _, result := range results {
-		data, err := getTimeIndexFromSortedSet(result)
-		if err != nil {
-			return nil, err
+	compositeDataMap, err := marshalRawDataFromResult(pipelineResults)
+	if err != nil {
+		return nil, err
+	}
+
+	sensorResultMap := make(map[int]*RawSensorData, len(ids))
+	for key, item := range compositeDataMap {
+		id := key - item.Time
+
+		if _, ok := sensorResultMap[id]; !ok {
+			sensorResultMap[id] = &RawSensorData{
+				ID:   id,
+				Data: make([]RawQualityData, 0, 10), // There will only every be a maximum of 10 results.
+			}
 		}
 
-		id := getIDFromRedisKey(result)
-		if data != nil && id > 0 {
-			rawSensorSlice = append(rawSensorSlice, RawSensorData{
-				ID:   id,
-				Data: data,
-			})
-		}
+		sensorResultMap[id].Data = append(sensorResultMap[id].Data, *item)
+	}
+
+	rawSensorSlice := make([]*RawSensorData, 0, len(ids))
+	for _, sensor := range sensorResultMap {
+		rawSensorSlice = append(rawSensorSlice, sensor)
 	}
 
 	return rawSensorSlice, nil

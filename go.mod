@@ -13,6 +13,7 @@ require (
 	github.com/klauspost/compress v1.10.11 // indirect
 	github.com/magiconair/properties v1.8.2 // indirect
 	github.com/mitchellh/mapstructure v1.3.3 // indirect
+	github.com/mrflynn/go-aqi v0.0.9
 	github.com/pelletier/go-toml v1.8.0 // indirect
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/afero v1.3.5 // indirect
