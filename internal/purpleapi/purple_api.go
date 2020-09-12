@@ -10,16 +10,15 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"golang.org/x/time/rate"
 )
-
-const apiURL = "https://www.purpleair.com/json"
 
 var (
 	// Enable encoding/json compat.
 	json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-	// Rate limiter that only allows one request per 10 seconds.
+	// Default rate limiter that only allows one request per 10 seconds.
 	limiter = rate.NewLimiter(rate.Every(10*time.Second), 1)
 )
 
@@ -97,13 +96,16 @@ func Get(ctx context.Context) ([]Response, error) {
 	var err error
 	var resp *http.Response
 
+	// Make sure rate limiter has configured value.
+	limiter.SetLimit(rate.Every(viper.GetDuration("purpleair.rate_limit_timeout")))
+
 	for i := 0; i < 5; i++ {
 		err = limiter.Wait(ctx)
 		if err != nil {
 			return []Response{}, err
 		}
 
-		resp, err = http.Get(apiURL)
+		resp, err = http.Get(viper.GetString("purpleair.url"))
 		if err != nil {
 			return []Response{}, err
 		}

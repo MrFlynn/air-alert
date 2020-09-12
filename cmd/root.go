@@ -49,6 +49,8 @@ func init() {
 	viper.SetDefault("database.redis.id", 0)
 	viper.SetDefault("timezone", "UTC")
 	viper.SetDefault("web.port", 3000)
+	viper.SetDefault("purpleair.url", "https://www.purpleair.com/json")
+	viper.SetDefault("purpleair.rate_limit_timeout", 10*time.Second)
 
 	log.SetFormatter(&log.TextFormatter{
 		FullTimestamp:          true,
