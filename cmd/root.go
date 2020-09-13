@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/mrflynn/air-alert/internal/database"
+	"github.com/mrflynn/air-alert/internal/database/redis"
 	"github.com/mrflynn/air-alert/internal/purpleapi"
 	"github.com/mrflynn/air-alert/internal/router"
 	"github.com/mrflynn/air-alert/internal/task"
@@ -18,7 +18,7 @@ import (
 
 var (
 	configFile string
-	db         *database.Controller
+	datastore  *redis.Controller
 	taskRunner *task.Runner
 	server     *router.Router
 
@@ -81,7 +81,7 @@ func initConfig() {
 func initApp() {
 	var err error
 
-	db, err = database.NewController()
+	datastore, err = redis.NewController()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func initApp() {
 		log.Fatal(err)
 	}
 
-	server = router.NewRouter(db)
+	server = router.NewRouter(datastore)
 }
 
 func initTasks() {
@@ -108,7 +108,7 @@ func initTasks() {
 				return err
 			}
 
-			err = db.SetAirQuality(ctx, resp)
+			err = datastore.SetAirQuality(ctx, resp)
 			if err != nil {
 				return err
 			}
@@ -131,7 +131,7 @@ func initTasks() {
 				return err
 			}
 
-			err = db.SetSensorLocationData(ctx, resp)
+			err = datastore.SetSensorLocationData(ctx, resp)
 			if err != nil {
 				return err
 			}

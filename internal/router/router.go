@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber"
-	"github.com/mrflynn/air-alert/internal/database"
+	"github.com/mrflynn/air-alert/internal/database/redis"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -14,24 +14,24 @@ import (
 type Router struct {
 	Port int
 
-	app *fiber.App
-	db  *database.Controller
+	app       *fiber.App
+	datastore *redis.Controller
 }
 
 // NewRouter creates a new Router struct from the given context.
-func NewRouter(db *database.Controller) *Router {
+func NewRouter(datastore *redis.Controller) *Router {
 	return &Router{
 		Port: viper.GetInt("web.port"),
 		app: fiber.New(&fiber.Settings{
 			DisableStartupMessage: true,
 		}),
-		db: db,
+		datastore: datastore,
 	}
 }
 
 func (r *Router) addRoutes() {
 	r.app.Get("/api/data", func(ctx *fiber.Ctx) {
-		getAQIReadings(ctx, r.db)
+		getAQIReadings(ctx, r.datastore)
 	})
 }
 

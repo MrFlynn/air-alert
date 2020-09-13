@@ -6,13 +6,13 @@ import (
 
 	"github.com/gofiber/fiber"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/mrflynn/air-alert/internal/database"
+	"github.com/mrflynn/air-alert/internal/database/redis"
 	log "github.com/sirupsen/logrus"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-func getAQIReadings(ctx *fiber.Ctx, db *database.Controller) {
+func getAQIReadings(ctx *fiber.Ctx, datastore *redis.Controller) {
 	long, err := strconv.ParseFloat(ctx.Query("long"), 32)
 	if err != nil {
 		log.Error("longitude parameter has invalid format")
@@ -29,7 +29,7 @@ func getAQIReadings(ctx *fiber.Ctx, db *database.Controller) {
 		return
 	}
 
-	results, err := db.GetAQIFromSensorsInRange(ctx.Context(), long, lat, 2000)
+	results, err := datastore.GetAQIFromSensorsInRange(ctx.Context(), long, lat, 2000)
 	if err != nil {
 		log.Errorf("database error: %s", err)
 		ctx.Status(
@@ -51,5 +51,6 @@ func getAQIReadings(ctx *fiber.Ctx, db *database.Controller) {
 		return
 	}
 
+	ctx.Type("json", "utf-8")
 	ctx.SendStream(buff, buff.Len())
 }
