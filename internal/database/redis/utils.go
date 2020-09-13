@@ -15,12 +15,18 @@ var (
 	keyRegex      = regexp.MustCompile(`^[0-9]+$`)
 )
 
-func addAQIRequestToPipe(ctx context.Context, pipe redis.Pipeliner, id int) error {
-	if err := pipe.ZRevRangeWithScores(ctx, createRedisKey(id, "data", "pm25"), 0, -1).Err(); err != nil {
+func addAQIRequestToPipe(ctx context.Context, pipe redis.Pipeliner, id int, count ...int64) error {
+	var numResults int64 = -1
+
+	if len(count) > 0 {
+		numResults = count[0]
+	}
+
+	if err := pipe.ZRevRangeWithScores(ctx, createRedisKey(id, "data", "pm25"), 0, numResults).Err(); err != nil {
 		return err
 	}
 
-	if err := pipe.ZRevRangeWithScores(ctx, createRedisKey(id, "data", "aqi"), 0, -1).Err(); err != nil {
+	if err := pipe.ZRevRangeWithScores(ctx, createRedisKey(id, "data", "aqi"), 0, numResults).Err(); err != nil {
 		return err
 	}
 

@@ -164,17 +164,12 @@ func (c *Controller) GetAirQuality(ctx context.Context, id int) (*RawSensorData,
 	return nil, fmt.Errorf("could not get sensor data for sensor id: %d", id)
 }
 
-// GetAQIFromSensorsInRange returns raw sensor data from all sensors within the specified
-// radius around the given coordinates.
-func (c *Controller) GetAQIFromSensorsInRange(ctx context.Context, longitude, latitude, radius float64) ([]*RawSensorData, error) {
-	ids, err := c.GetSensorsInRange(ctx, longitude, latitude, radius)
-	if err != nil {
-		return nil, err
-	}
-
+// GetTimeSeriesData takes a list of sensor IDs and returns the time-series sensor and computed data
+// for each sensor.
+func (c *Controller) GetTimeSeriesData(ctx context.Context, ids []int, count ...int64) (map[int]*RawQualityData, error) {
 	pipelineResults, err := c.db.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 		for _, id := range ids {
-			err := addAQIRequestToPipe(ctx, pipe, id)
+			err := addAQIRequestToPipe(ctx, pipe, id, count...)
 			if err != nil {
 				return err
 			}
@@ -192,7 +187,23 @@ func (c *Controller) GetAQIFromSensorsInRange(ctx context.Context, longitude, la
 		return nil, err
 	}
 
-	sensorResultMap := make(map[int]*RawSensorData, len(ids))
+	return compositeDataMap, nil
+}
+
+// GetAQIFromSensorsInRange returns raw sensor data from all sensors within the specified
+// radius around the given coordinates.
+func (c *Controller) GetAQIFromSensorsInRange(ctx context.Context, longitude, latitude, radius float64) ([]*RawSensorData, error) {
+	ids, err := c.GetSensorsInRange(ctx, longitude, latitude, radius)
+	if err != nil {
+		return nil, err
+	}
+
+	compositeDataMap, err := c.GetTimeSeriesData(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	sensorResultMap := make(map[int]*RawSensorData, len(compositeDataMap))
 	for key, item := range compositeDataMap {
 		id := key - item.Time
 
@@ -206,7 +217,7 @@ func (c *Controller) GetAQIFromSensorsInRange(ctx context.Context, longitude, la
 		sensorResultMap[id].Data = append(sensorResultMap[id].Data, *item)
 	}
 
-	rawSensorSlice := make([]*RawSensorData, 0, len(ids))
+	rawSensorSlice := make([]*RawSensorData, 0, len(compositeDataMap))
 	for _, sensor := range sensorResultMap {
 		rawSensorSlice = append(rawSensorSlice, sensor)
 	}
