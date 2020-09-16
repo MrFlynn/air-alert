@@ -134,42 +134,6 @@ type RawQualityData struct {
 	AQI  float64 `json:"aqi,omitempty"`
 }
 
-// GetAirQuality gets 10 most recent PM2.5 AQI readings from a specific sensor.
-func (c *Controller) GetAirQuality(ctx context.Context, id int) (*RawSensorData, error) {
-	results, err := c.db.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
-		return addAQIRequestToPipe(ctx, pipe, id)
-	})
-
-	if err == redis.Nil {
-		return nil, fmt.Errorf("could not find data for sensor %d", id)
-	} else if err != nil {
-		return nil, err
-	}
-
-	if len(results) < 1 {
-		return nil, fmt.Errorf("could not find data for sensor %d", id)
-	}
-
-	// Only take first as there should only be one result.
-	data, err := marshalRawDataFromResult(results)
-	if err != nil {
-		return nil, err
-	}
-
-	for key, item := range data {
-		if itemKey, err := key.ID(); err == nil {
-			if id == itemKey {
-				return &RawSensorData{
-					ID:   itemKey,
-					Data: []RawQualityData{*item},
-				}, nil
-			}
-		}
-	}
-
-	return nil, fmt.Errorf("could not get sensor data for sensor id: %d", id)
-}
-
 // GetTimeSeriesData takes a list of sensor IDs and returns the time-series sensor and computed data
 // for each sensor.
 func (c *Controller) GetTimeSeriesData(ctx context.Context, ids []int, count ...int64) (map[UnionKey]*RawQualityData, error) {
@@ -188,12 +152,33 @@ func (c *Controller) GetTimeSeriesData(ctx context.Context, ids []int, count ...
 		return nil, err
 	}
 
-	compositeDataMap, err := marshalRawDataFromResult(pipelineResults)
+	compositeDataMap, err := serializeSensorData(pipelineResults)
 	if err != nil {
 		return nil, err
 	}
 
 	return compositeDataMap, nil
+}
+
+// GetAirQuality gets 10 most recent PM2.5 AQI readings from a specific sensor.
+func (c *Controller) GetAirQuality(ctx context.Context, id int) (*RawSensorData, error) {
+	data, err := c.GetTimeSeriesData(ctx, []int{id})
+	if err != nil {
+		return nil, err
+	}
+
+	for key, item := range data {
+		if itemKey, err := key.ID(); err == nil {
+			if id == itemKey {
+				return &RawSensorData{
+					ID:   itemKey,
+					Data: []RawQualityData{*item},
+				}, nil
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("could not get sensor data for sensor id: %d", id)
 }
 
 // GetAQIFromSensorsInRange returns raw sensor data from all sensors within the specified

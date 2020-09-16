@@ -57,7 +57,7 @@ func (u UnionKey) Timestamp() (int, error) {
 	return u[1], nil
 }
 
-func marshalRawDataFromResult(cmds []redis.Cmder) (map[UnionKey]*RawQualityData, error) {
+func serializeSensorData(cmds []redis.Cmder) (map[UnionKey]*RawQualityData, error) {
 	// The key for this map is a union type. Since PM25 and AQI data is stored in separate sorted sets,
 	// we get each value in different Z slices. In order to properly place these values into the correct
 	// structs, we need the ID of the sensor and the recorded timestamp. We need to be able to extract
