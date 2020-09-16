@@ -103,28 +103,30 @@ func serializeSensorData(cmds []redis.Cmder) (map[UnionKey]*RawQualityData, erro
 	return resultLookup, nil
 }
 
-func getForecastsFromStream(cmds []redis.Cmder) ([]AQIStreamData, error) {
-	streamData := make([]AQIStreamData, 0, len(cmds)-1)
+func getNotificationsFromStream(cmds []redis.Cmder) ([]NotificationStream, error) {
+	streamData := make([]NotificationStream, 0, len(cmds)-1)
 
 	for _, c := range cmds {
 		switch cmd := c.(type) {
 		case *redis.XMessageSliceCmd:
-			id := getIDFromRedisKey(cmd)
-			if id < 0 {
-				log.Debugf("got id %d less than 0", id)
-				continue
-			}
+			var err error
 
 			stream, err := cmd.Result()
 			if err != nil {
-				log.Debugf("could not get result for %d : %s", id, err)
+				if err == redis.Nil {
+					// If we get nothing, return nothing.
+					return nil, nil
+				}
+
+				log.Debugf("could not get result: %s", err)
 				continue
 			}
 
 			for _, s := range stream {
+				uid := s.Values["uid"].(int)
+
 				var aqi float64
 				var forecast int
-				var err error
 
 				aqi, err = strconv.ParseFloat(s.Values["aqi"].(string), 64)
 				if err != nil {
@@ -138,10 +140,11 @@ func getForecastsFromStream(cmds []redis.Cmder) ([]AQIStreamData, error) {
 					continue
 				}
 
-				streamData = append(streamData, AQIStreamData{
-					ID:       id,
-					AQI:      aqi,
-					Forecast: AQIForecast(forecast),
+				streamData = append(streamData, NotificationStream{
+					MessageID: s.ID,
+					UID:       uid,
+					AQI:       aqi,
+					Forecast:  AQIForecast(forecast),
 				})
 			}
 		case *redis.StatusCmd:

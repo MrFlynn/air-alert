@@ -16,9 +16,9 @@ import (
 )
 
 const (
-	sensorMapKey      = "sensors"
-	forecastStreamKey = "forecast"
-	streamSize        = 10
+	sensorMapKey          = "sensors"
+	notificationStreamKey = "notifications"
+	streamSize            = 10
 )
 
 // Controller is a container for a Redis client.
@@ -291,27 +291,28 @@ const (
 	AQIDecreasing
 )
 
-// AQIStreamData contains data to insert into Redis stream that contains changing AQI information.
-type AQIStreamData struct {
-	ID       int
-	AQI      float64
-	Forecast AQIForecast
+// NotificationStream contains data to insert into Redis stream that contains changing AQI information.
+type NotificationStream struct {
+	MessageID string
+	UID       int
+	AQI       float64
+	Forecast  AQIForecast
 }
 
-func (a AQIStreamData) getStreamArgs() map[string]interface{} {
+func (a NotificationStream) getStreamArgs() map[string]interface{} {
 	return map[string]interface{}{
+		"uid":      a.UID,
 		"aqi":      a.AQI,
 		"forecast": a.Forecast,
 	}
 }
 
-// AddToForecastStream adds one or more AQIStreamData items into the forecast stream.
-func (c *Controller) AddToForecastStream(ctx context.Context, data ...AQIStreamData) error {
+// AddToNotificationStream adds one or more NotifcationStream items into the forecast stream.
+func (c *Controller) AddToNotificationStream(ctx context.Context, data ...NotificationStream) error {
 	_, err := c.db.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 		for _, d := range data {
 			pipe.XAdd(ctx, &redis.XAddArgs{
-				Stream: createRedisKey(d.ID, forecastStreamKey),
-				MaxLen: streamSize,
+				Stream: notificationStreamKey,
 				ID:     "*",
 				Values: d.getStreamArgs(),
 			})
@@ -323,19 +324,27 @@ func (c *Controller) AddToForecastStream(ctx context.Context, data ...AQIStreamD
 	return err
 }
 
-// GetForecastStreamForIDs ...
-func (c *Controller) GetForecastStreamForIDs(ctx context.Context, ids ...int) ([]AQIStreamData, error) {
-	pipelineResults, err := c.db.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
-		for _, id := range ids {
-			pipe.XRangeN(ctx, createRedisKey(id, forecastStreamKey), "+", "-", 1)
-		}
-
-		return nil
+// NotificationConsumerRead reads n notifications from the "notifications" stream and serializes
+// them into an array of NotificationStream structs.
+func (c *Controller) NotificationConsumerRead(ctx context.Context, group, consumer string, count int64) ([]NotificationStream, error) {
+	result := c.db.XReadGroup(ctx, &redis.XReadGroupArgs{
+		Group:    group,
+		Consumer: consumer,
+		Streams:  []string{notificationStreamKey},
+		Count:    count,
+		Block:    200 * time.Millisecond,
+		NoAck:    true,
 	})
 
-	if err != nil {
-		return nil, err
+	return getNotificationsFromStream([]redis.Cmder{result})
+}
+
+// ACKNotifications acknowledges that a set of notifications have been processed.
+func (c *Controller) ACKNotifications(ctx context.Context, group string, notifications ...NotificationStream) error {
+	ids := make([]string, 0, len(notifications))
+	for _, n := range notifications {
+		ids = append(ids, n.MessageID)
 	}
 
-	return getForecastsFromStream(pipelineResults)
+	return c.db.XAck(ctx, notificationStreamKey, group, ids...).Err()
 }

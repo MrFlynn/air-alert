@@ -166,12 +166,13 @@ func TestMarshalRawDataBadType(t *testing.T) {
 	}
 }
 
-func TestGetForecastsFromStream(t *testing.T) {
+func TestGetNotifcationStream(t *testing.T) {
 	cmd := redis.NewXMessageSliceCmd(context.Background(), "xrange", "1", "+", "-", "count", 1)
 	addXMessageSlice(cmd, []redis.XMessage{
 		{
 			ID: "0",
 			Values: map[string]interface{}{
+				"uid":      1,
 				"aqi":      "3.0",
 				"forecast": "0",
 			},
@@ -179,6 +180,7 @@ func TestGetForecastsFromStream(t *testing.T) {
 		{
 			ID: "1",
 			Values: map[string]interface{}{
+				"uid":      1,
 				"aqi":      "2.5",
 				"forecast": "2",
 			},
@@ -187,21 +189,23 @@ func TestGetForecastsFromStream(t *testing.T) {
 
 	status := redis.NewStatusCmd(context.Background())
 
-	data, err := getForecastsFromStream([]redis.Cmder{cmd, status})
+	data, err := getNotificationsFromStream([]redis.Cmder{cmd, status})
 	if err != nil {
 		t.Errorf("got unexpected error: %s", err)
 	}
 
-	expected := []AQIStreamData{
+	expected := []NotificationStream{
 		{
-			ID:       1,
-			AQI:      3.0,
-			Forecast: AQIStatic,
+			MessageID: "0",
+			UID:       1,
+			AQI:       3.0,
+			Forecast:  AQIStatic,
 		},
 		{
-			ID:       1,
-			AQI:      2.5,
-			Forecast: AQIDecreasing,
+			MessageID: "1",
+			UID:       1,
+			AQI:       2.5,
+			Forecast:  AQIDecreasing,
 		},
 	}
 
@@ -210,10 +214,24 @@ func TestGetForecastsFromStream(t *testing.T) {
 	}
 }
 
+func TestReceivedNil(t *testing.T) {
+	cmd := redis.NewXMessageSliceCmd(context.Background(), "xrange", "1", "+", "-", "count", 1)
+	cmd.SetErr(redis.Nil)
+
+	data, err := getNotificationsFromStream([]redis.Cmder{cmd})
+	if err != nil {
+		t.Errorf("got unexpected error: %s", err)
+	}
+
+	if data != nil {
+		t.Errorf("expected data to be nil, got %#v", data)
+	}
+}
+
 func TestGetForecastsFromStreamBadType(t *testing.T) {
 	cmd := redis.NewBoolCmd(context.Background(), "exists", "1")
 
-	_, err := getForecastsFromStream([]redis.Cmder{cmd})
+	_, err := getNotificationsFromStream([]redis.Cmder{cmd})
 	if err == nil {
 		t.Error("expected error, got nil")
 	}
