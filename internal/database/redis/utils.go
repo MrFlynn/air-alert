@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/go-redis/redis/v8"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -43,15 +44,21 @@ func marshalRawDataFromResult(cmds []redis.Cmder) (map[int]*RawQualityData, erro
 		switch cmd := c.(type) {
 		case *redis.ZSliceCmd:
 			id, path := getFullIDFromRedisKey(cmd)
+			if id < 0 {
+				log.Debugf("got id %d less than 0", id)
+				continue
+			}
 
 			set, err := cmd.Result()
 			if err != nil {
+				log.Debugf("could not get result for %#v : %d : %s", path, id, err)
 				continue
 			}
 
 			for _, item := range set {
 				value, err := strconv.ParseFloat(item.Member.(string), 64)
 				if err != nil {
+					log.Debugf("could not convert field %#v : %d to float: %s", path, id, err)
 					continue
 				}
 
@@ -77,6 +84,57 @@ func marshalRawDataFromResult(cmds []redis.Cmder) (map[int]*RawQualityData, erro
 	}
 
 	return resultLookup, nil
+}
+
+func getForecastsFromStream(cmds []redis.Cmder) ([]AQIStreamData, error) {
+	streamData := make([]AQIStreamData, 0, len(cmds)-1)
+
+	for _, c := range cmds {
+		switch cmd := c.(type) {
+		case *redis.XMessageSliceCmd:
+			id := getIDFromRedisKey(cmd)
+			if id < 0 {
+				log.Debugf("got id %d less than 0", id)
+				continue
+			}
+
+			stream, err := cmd.Result()
+			if err != nil {
+				log.Debugf("could not get result for %d : %s", id, err)
+				continue
+			}
+
+			for _, s := range stream {
+				var aqi float64
+				var forecast int
+				var err error
+
+				aqi, err = strconv.ParseFloat(s.Values["aqi"].(string), 64)
+				if err != nil {
+					log.Debugf("could not conver aqi field from stream: %s", err)
+					continue
+				}
+
+				forecast, err = strconv.Atoi(s.Values["forecast"].(string))
+				if err != nil {
+					log.Debugf("could not convert forecast field from stream %s", err)
+					continue
+				}
+
+				streamData = append(streamData, AQIStreamData{
+					ID:       id,
+					AQI:      aqi,
+					Forecast: AQIForecast(forecast),
+				})
+			}
+		case *redis.StatusCmd:
+			continue
+		default:
+			return nil, fmt.Errorf("could not find valid conversion for %T", cmd)
+		}
+	}
+
+	return streamData, nil
 }
 
 func createRedisKey(id int, path ...string) string {

@@ -15,7 +15,11 @@ import (
 	"github.com/spf13/viper"
 )
 
-const sensorMapKey = "sensors"
+const (
+	sensorMapKey      = "sensors"
+	forecastStreamKey = "forecast"
+	streamSize        = 10
+)
 
 // Controller is a container for a Redis client.
 type Controller struct {
@@ -30,7 +34,7 @@ func NewController() (*Controller, error) {
 		DB:       viper.GetInt("database.redis.id"),
 	})
 
-	if _, err := db.Ping(context.Background()).Result(); err != nil {
+	if err := db.Ping(context.Background()).Err(); err != nil {
 		return &Controller{}, err
 	}
 
@@ -288,4 +292,66 @@ func (c *Controller) GetSensorsInRange(ctx context.Context, longitude, latitude,
 	}
 
 	return ids, nil
+}
+
+// AQIForecast indicates changes in the direction of AQI values. In other words it indicates whether
+// or not the AQI is increasing, decreasing, or remaining the same.
+type AQIForecast int
+
+const (
+	// AQIStatic indicates that the AQI is not changing.
+	AQIStatic AQIForecast = iota
+	// AQIIncreasing indicates that the AQI is increasing.
+	AQIIncreasing
+	// AQIDecreasing indicates that the AQI is decreasing.
+	AQIDecreasing
+)
+
+// AQIStreamData contains data to insert into Redis stream that contains changing AQI information.
+type AQIStreamData struct {
+	ID       int
+	AQI      float64
+	Forecast AQIForecast
+}
+
+func (a AQIStreamData) getStreamArgs() map[string]interface{} {
+	return map[string]interface{}{
+		"aqi":      a.AQI,
+		"forecast": a.Forecast,
+	}
+}
+
+// AddToForecastStream adds one or more AQIStreamData items into the forecast stream.
+func (c *Controller) AddToForecastStream(ctx context.Context, data ...AQIStreamData) error {
+	_, err := c.db.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+		for _, d := range data {
+			pipe.XAdd(ctx, &redis.XAddArgs{
+				Stream: createRedisKey(d.ID, forecastStreamKey),
+				MaxLen: streamSize,
+				ID:     "*",
+				Values: d.getStreamArgs(),
+			})
+		}
+
+		return nil
+	})
+
+	return err
+}
+
+// GetForecastStreamForIDs ...
+func (c *Controller) GetForecastStreamForIDs(ctx context.Context, ids ...int) ([]AQIStreamData, error) {
+	pipelineResults, err := c.db.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+		for _, id := range ids {
+			pipe.XRangeN(ctx, createRedisKey(id, forecastStreamKey), "+", "-", 1)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return getForecastsFromStream(pipelineResults)
 }
