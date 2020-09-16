@@ -81,7 +81,7 @@ func TestMarshalRawDataSingle(t *testing.T) {
 
 	addZSlice(cmd, results)
 
-	data, err := marshalRawDataFromResult([]redis.Cmder{cmd})
+	data, err := serializeSensorData([]redis.Cmder{cmd})
 	if err != nil {
 		t.Errorf("got unexpected error: %s", err)
 	}
@@ -127,9 +127,11 @@ func TestMarshalRawDataMulti(t *testing.T) {
 		},
 	})
 
-	cmds := []redis.Cmder{first, second, third}
+	status := redis.NewStatusCmd(context.Background())
 
-	data, err := marshalRawDataFromResult(cmds)
+	cmds := []redis.Cmder{first, second, third, status}
+
+	data, err := serializeSensorData(cmds)
 	if err != nil {
 		t.Errorf("got unexpected error: %s", err)
 	}
@@ -155,6 +157,15 @@ func TestMarshalRawDataMulti(t *testing.T) {
 	}
 }
 
+func TestMarshalRawDataBadType(t *testing.T) {
+	cmd := redis.NewBoolCmd(context.Background(), "exists", "1")
+
+	_, err := serializeSensorData([]redis.Cmder{cmd})
+	if err == nil {
+		t.Error("expected error, got nil")
+	}
+}
+
 func TestGetForecastsFromStream(t *testing.T) {
 	cmd := redis.NewXMessageSliceCmd(context.Background(), "xrange", "1", "+", "-", "count", 1)
 	addXMessageSlice(cmd, []redis.XMessage{
@@ -165,9 +176,18 @@ func TestGetForecastsFromStream(t *testing.T) {
 				"forecast": "0",
 			},
 		},
+		{
+			ID: "1",
+			Values: map[string]interface{}{
+				"aqi":      "2.5",
+				"forecast": "2",
+			},
+		},
 	})
 
-	data, err := getForecastsFromStream([]redis.Cmder{cmd})
+	status := redis.NewStatusCmd(context.Background())
+
+	data, err := getForecastsFromStream([]redis.Cmder{cmd, status})
 	if err != nil {
 		t.Errorf("got unexpected error: %s", err)
 	}
@@ -178,9 +198,39 @@ func TestGetForecastsFromStream(t *testing.T) {
 			AQI:      3.0,
 			Forecast: AQIStatic,
 		},
+		{
+			ID:       1,
+			AQI:      2.5,
+			Forecast: AQIDecreasing,
+		},
 	}
 
 	if !cmp.Equal(data, expected) {
 		t.Errorf("\nexpected %#v\ngot %#v", expected, data)
+	}
+}
+
+func TestGetForecastsFromStreamBadType(t *testing.T) {
+	cmd := redis.NewBoolCmd(context.Background(), "exists", "1")
+
+	_, err := getForecastsFromStream([]redis.Cmder{cmd})
+	if err == nil {
+		t.Error("expected error, got nil")
+	}
+}
+
+func TestUnionKey(t *testing.T) {
+	u := UnionKey{1, 2}
+
+	id := u.ID()
+
+	if id != 1 {
+		t.Errorf("expected id to be 1, got %d", id)
+	}
+
+	ts := u.Timestamp()
+
+	if ts != 2 {
+		t.Errorf("expected timestamp to be 2, got %d", id)
 	}
 }

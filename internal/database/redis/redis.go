@@ -168,13 +168,11 @@ func (c *Controller) GetAirQuality(ctx context.Context, id int) (*RawSensorData,
 	}
 
 	for key, item := range data {
-		if itemKey, err := key.ID(); err == nil {
-			if id == itemKey {
-				return &RawSensorData{
-					ID:   itemKey,
-					Data: []RawQualityData{*item},
-				}, nil
-			}
+		if id == key.ID() {
+			return &RawSensorData{
+				ID:   key.ID(),
+				Data: []RawQualityData{*item},
+			}, nil
 		}
 	}
 
@@ -196,16 +194,15 @@ func (c *Controller) GetAQIFromSensorsInRange(ctx context.Context, longitude, la
 
 	sensorResultMap := make(map[int]*RawSensorData, len(compositeDataMap))
 	for key, item := range compositeDataMap {
-		if id, err := key.ID(); err == nil {
-			if _, ok := sensorResultMap[id]; !ok {
-				sensorResultMap[id] = &RawSensorData{
-					ID:   id,
-					Data: make([]RawQualityData, 0, 10), // There will only every be a maximum of 10 results.
-				}
+		id := key.ID()
+		if _, ok := sensorResultMap[id]; !ok {
+			sensorResultMap[id] = &RawSensorData{
+				ID:   id,
+				Data: make([]RawQualityData, 0, 10), // There will only every be a maximum of 10 results.
 			}
-
-			sensorResultMap[id].Data = append(sensorResultMap[id].Data, *item)
 		}
+
+		sensorResultMap[id].Data = append(sensorResultMap[id].Data, *item)
 	}
 
 	rawSensorSlice := make([]*RawSensorData, 0, len(compositeDataMap))

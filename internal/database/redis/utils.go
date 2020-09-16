@@ -2,7 +2,6 @@ package redis
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -40,21 +39,13 @@ func addAQIRequestToPipe(ctx context.Context, pipe redis.Pipeliner, id int, coun
 type UnionKey [2]int
 
 // ID returns the ID field from the union.
-func (u UnionKey) ID() (int, error) {
-	if len(u) < 1 {
-		return 0, errors.New("id not present in union")
-	}
-
-	return u[0], nil
+func (u UnionKey) ID() int {
+	return u[0]
 }
 
 // Timestamp returns the timestamp field from the union.
-func (u UnionKey) Timestamp() (int, error) {
-	if len(u) < 2 {
-		return 0, errors.New("timestamp not present in union")
-	}
-
-	return u[1], nil
+func (u UnionKey) Timestamp() int {
+	return u[1]
 }
 
 func serializeSensorData(cmds []redis.Cmder) (map[UnionKey]*RawQualityData, error) {
