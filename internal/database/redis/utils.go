@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -34,11 +35,36 @@ func addAQIRequestToPipe(ctx context.Context, pipe redis.Pipeliner, id int, coun
 	return nil
 }
 
-func marshalRawDataFromResult(cmds []redis.Cmder) (map[int]*RawQualityData, error) {
-	// The the key for this map is made by adding the time index + the sensor id. Since each
-	// sensor ID is unique and there is only one measurement per time index, this will yield
-	// unique, reversible keys.
-	resultLookup := make(map[int]*RawQualityData, len(cmds)-1)
+// UnionKey is a tuple of an ID and a timestamp.
+// Compared to structs as keys in maps, using a fixed-size array is about 1.5x faster.
+type UnionKey [2]int
+
+// ID returns the ID field from the union.
+func (u UnionKey) ID() (int, error) {
+	if len(u) < 1 {
+		return 0, errors.New("id not present in union")
+	}
+
+	return u[0], nil
+}
+
+// Timestamp returns the timestamp field from the union.
+func (u UnionKey) Timestamp() (int, error) {
+	if len(u) < 2 {
+		return 0, errors.New("timestamp not present in union")
+	}
+
+	return u[1], nil
+}
+
+func marshalRawDataFromResult(cmds []redis.Cmder) (map[UnionKey]*RawQualityData, error) {
+	// The key for this map is a union type. Since PM25 and AQI data is stored in separate sorted sets,
+	// we get each value in different Z slices. In order to properly place these values into the correct
+	// structs, we need the ID of the sensor and the recorded timestamp. We need to be able to extract
+	// the ID separately when assigning the results of this function to the proper RawSensorData structs
+	// but there exists no reversible, non-associative (this is key since id + time could equal id2 + time2)
+	// function to accomplish this.
+	resultLookup := make(map[UnionKey]*RawQualityData, len(cmds)-1)
 
 	for _, c := range cmds {
 		switch cmd := c.(type) {
@@ -62,7 +88,7 @@ func marshalRawDataFromResult(cmds []redis.Cmder) (map[int]*RawQualityData, erro
 					continue
 				}
 
-				key := id + int(item.Score)
+				key := UnionKey{id, int(item.Score)}
 
 				// Allocate the struct if it doesn't exist.
 				if _, ok := resultLookup[key]; !ok {

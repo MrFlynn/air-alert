@@ -86,8 +86,8 @@ func TestMarshalRawDataSingle(t *testing.T) {
 		t.Errorf("got unexpected error: %s", err)
 	}
 
-	expected := map[int]*RawQualityData{
-		2: {
+	expected := map[UnionKey]*RawQualityData{
+		{1, 1}: {
 			Time: 1,
 			PM25: 3.0,
 		},
@@ -134,17 +134,17 @@ func TestMarshalRawDataMulti(t *testing.T) {
 		t.Errorf("got unexpected error: %s", err)
 	}
 
-	expected := map[int]*RawQualityData{
-		2: {
+	expected := map[UnionKey]*RawQualityData{
+		{1, 1}: {
 			Time: 1,
 			PM25: 2.0,
 		},
-		3: {
+		{1, 2}: {
 			Time: 2,
 			PM25: 1.0,
 			AQI:  3.0,
 		},
-		4: {
+		{2, 2}: {
 			Time: 2,
 			PM25: 4.0,
 		},

@@ -157,11 +157,13 @@ func (c *Controller) GetAirQuality(ctx context.Context, id int) (*RawSensorData,
 	}
 
 	for key, item := range data {
-		if id == (key - item.Time) {
-			return &RawSensorData{
-				ID:   key - item.Time,
-				Data: []RawQualityData{*item},
-			}, nil
+		if itemKey, err := key.ID(); err == nil {
+			if id == itemKey {
+				return &RawSensorData{
+					ID:   itemKey,
+					Data: []RawQualityData{*item},
+				}, nil
+			}
 		}
 	}
 
@@ -170,7 +172,7 @@ func (c *Controller) GetAirQuality(ctx context.Context, id int) (*RawSensorData,
 
 // GetTimeSeriesData takes a list of sensor IDs and returns the time-series sensor and computed data
 // for each sensor.
-func (c *Controller) GetTimeSeriesData(ctx context.Context, ids []int, count ...int64) (map[int]*RawQualityData, error) {
+func (c *Controller) GetTimeSeriesData(ctx context.Context, ids []int, count ...int64) (map[UnionKey]*RawQualityData, error) {
 	pipelineResults, err := c.db.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 		for _, id := range ids {
 			err := addAQIRequestToPipe(ctx, pipe, id, count...)
@@ -209,16 +211,16 @@ func (c *Controller) GetAQIFromSensorsInRange(ctx context.Context, longitude, la
 
 	sensorResultMap := make(map[int]*RawSensorData, len(compositeDataMap))
 	for key, item := range compositeDataMap {
-		id := key - item.Time
-
-		if _, ok := sensorResultMap[id]; !ok {
-			sensorResultMap[id] = &RawSensorData{
-				ID:   id,
-				Data: make([]RawQualityData, 0, 10), // There will only every be a maximum of 10 results.
+		if id, err := key.ID(); err == nil {
+			if _, ok := sensorResultMap[id]; !ok {
+				sensorResultMap[id] = &RawSensorData{
+					ID:   id,
+					Data: make([]RawQualityData, 0, 10), // There will only every be a maximum of 10 results.
+				}
 			}
-		}
 
-		sensorResultMap[id].Data = append(sensorResultMap[id].Data, *item)
+			sensorResultMap[id].Data = append(sensorResultMap[id].Data, *item)
+		}
 	}
 
 	rawSensorSlice := make([]*RawSensorData, 0, len(compositeDataMap))
