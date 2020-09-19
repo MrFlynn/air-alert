@@ -18,7 +18,6 @@ import (
 const (
 	sensorMapKey          = "sensors"
 	notificationStreamKey = "notifications"
-	streamSize            = 10
 )
 
 // Controller is a container for a Redis client.
@@ -136,10 +135,10 @@ type RawQualityData struct {
 
 // GetTimeSeriesData takes a list of sensor IDs and returns the time-series sensor and computed data
 // for each sensor.
-func (c *Controller) GetTimeSeriesData(ctx context.Context, ids []int, count ...int64) (map[UnionKey]*RawQualityData, error) {
+func (c *Controller) GetTimeSeriesData(ctx context.Context, count int64, ids ...int) (map[UnionKey]*RawQualityData, error) {
 	pipelineResults, err := c.db.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 		for _, id := range ids {
-			err := addAQIRequestToPipe(ctx, pipe, id, count...)
+			err := addAQIRequestToPipe(ctx, pipe, id, count)
 			if err != nil {
 				return err
 			}
@@ -162,7 +161,7 @@ func (c *Controller) GetTimeSeriesData(ctx context.Context, ids []int, count ...
 
 // GetAirQuality gets 10 most recent PM2.5 AQI readings from a specific sensor.
 func (c *Controller) GetAirQuality(ctx context.Context, id int) (*RawSensorData, error) {
-	data, err := c.GetTimeSeriesData(ctx, []int{id})
+	data, err := c.GetTimeSeriesData(ctx, 10, id)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +186,7 @@ func (c *Controller) GetAQIFromSensorsInRange(ctx context.Context, longitude, la
 		return nil, err
 	}
 
-	compositeDataMap, err := c.GetTimeSeriesData(ctx, ids)
+	compositeDataMap, err := c.GetTimeSeriesData(ctx, 10, ids...)
 	if err != nil {
 		return nil, err
 	}
