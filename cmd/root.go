@@ -1,24 +1,28 @@
 package cmd
 
 import (
-	"context"
+	"database/sql"
 	"fmt"
 	"os"
 	"os/signal"
 	"time"
 
 	"github.com/mrflynn/air-alert/internal/database/redis"
-	"github.com/mrflynn/air-alert/internal/purpleapi"
+	pg "github.com/mrflynn/air-alert/internal/database/sql"
 	"github.com/mrflynn/air-alert/internal/router"
 	"github.com/mrflynn/air-alert/internal/task"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	// pq is required for postgres database connection.
+	_ "github.com/lib/pq"
 )
 
 var (
 	configFile string
 	datastore  *redis.Controller
+	database   *pg.Controller
 	taskRunner *task.Runner
 	server     *router.Router
 
@@ -43,12 +47,23 @@ func init() {
 	// Program information.
 	viper.SetDefault("author", "Nick Pleatsikas <nick@pleatsikas.me>")
 
-	// Default settings.
+	// Default redis settings.
 	viper.SetDefault("database.redis.addr", ":6379")
 	viper.SetDefault("database.redis.password", "")
 	viper.SetDefault("database.redis.id", 0)
-	viper.SetDefault("timezone", "UTC")
+
+	// Default postgres settings.
+	viper.SetDefault("database.postgres.host", "localhost")
+	viper.SetDefault("database.postgres.port", 5432)
+	viper.SetDefault("database.postgres.username", "postgres")
+	viper.SetDefault("database.postgres.password", "")
+	viper.SetDefault("database.postgres.database", "airalert")
+
+	// Default web server settings.
 	viper.SetDefault("web.port", 3000)
+
+	// Other default settings.
+	viper.SetDefault("timezone", "UTC")
 	viper.SetDefault("purpleair.url", "https://www.purpleair.com/json")
 	viper.SetDefault("purpleair.rate_limit_timeout", 10*time.Second)
 
@@ -87,6 +102,28 @@ func initApp() {
 	}
 
 	taskRunner, err = task.NewRunner()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var dbConn *sql.DB
+	dbConn, err = sql.Open(
+		"postgres",
+		fmt.Sprintf(
+			"dbname=%s user=%s password=%s host=%s port=%d",
+			viper.GetString("database.postgres.database"),
+			viper.GetString("database.postgres.username"),
+			viper.GetString("database.postgres.password"),
+			viper.GetString("database.postgres.host"),
+			viper.GetInt("database.postgres.port"),
+		),
+	)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	database, err = pg.NewController(dbConn)
 	if err != nil {
 		log.Fatal(err)
 	}
