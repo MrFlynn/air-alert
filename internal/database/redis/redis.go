@@ -42,6 +42,14 @@ func NewController() (*Controller, error) {
 	}, nil
 }
 
+// Shutdown closes the connection to the Redis datastore.
+func (c *Controller) Shutdown() error {
+	log.Debug("attempting to shutdown redis datastore controller...")
+	err := c.db.Close()
+	log.Debug("redis datastore controller has shutdown")
+	return err
+}
+
 // This method tries to safely exchange keys and discards the old one.
 func (c *Controller) exchangeAndRemove(ctx context.Context, originalKey, newKey string) error {
 	res, err := c.db.Exists(ctx, originalKey).Result()

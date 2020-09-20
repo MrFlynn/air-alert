@@ -1,9 +1,6 @@
 package router
 
 import (
-	"context"
-	"time"
-
 	"github.com/gofiber/fiber"
 	"github.com/mrflynn/air-alert/internal/database/redis"
 	log "github.com/sirupsen/logrus"
@@ -52,29 +49,8 @@ func (r *Router) Run() error {
 
 // Shutdown attempts to safely shutdown the router.
 func (r *Router) Shutdown() error {
-	var err error
-
-	// Create shutdown timeout.
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	// Signal to indicate that the router has shutdown properly.
-	stopChan := make(chan bool, 1)
-
-	// Run shutdown asynchronously so we can properly utilize the context timeout.
-	go func() {
-		log.Info("attempting to shutdown router...")
-		err = r.app.Shutdown()
-		stopChan <- true
-	}()
-
-	select {
-	case <-ctx.Done():
-		log.Error("forced shutdown of router")
-		err = ctx.Err()
-	case <-stopChan:
-		log.Info("router has shutdown")
-	}
-
+	log.Debug("attempting to shutdown router...")
+	err := r.app.Shutdown()
+	log.Debug("router has shutdown")
 	return err
 }

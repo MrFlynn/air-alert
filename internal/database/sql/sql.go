@@ -6,6 +6,7 @@ import (
 
 	"github.com/SherClockHolmes/webpush-go"
 	"github.com/mrflynn/air-alert/internal/database/sql/models"
+	log "github.com/sirupsen/logrus"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
@@ -26,6 +27,14 @@ func NewController(conn *sql.DB) (*Controller, error) {
 	return &Controller{
 		db: conn,
 	}, nil
+}
+
+// Shutdown closes the database connection.
+func (c *Controller) Shutdown() error {
+	log.Debug("attempting to shutdown sql database controller...")
+	err := c.db.Close()
+	log.Debug("sql database controller has shutdown")
+	return err
 }
 
 // UserRequest is a container for storing details about a user from a request

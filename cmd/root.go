@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -31,7 +32,8 @@ var (
 		Short: "A server for alerting people to air quality changes",
 		Long: `Air Alert is a web application for alerting people to changes in air quality through 
 web push notifications`,
-		RunE: run,
+		RunE:    run,
+		PostRun: shutdown,
 	}
 )
 
@@ -195,13 +197,47 @@ func run(cmd *cobra.Command, args []string) error {
 	<-stopSignal
 	fmt.Printf("\n")
 
-	if err := server.Shutdown(); err != nil {
-		return err
-	}
-
-	taskRunner.Stop()
-
 	return nil
+}
+
+func shutdown(cmd *cobra.Command, args []string) {
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	hasShutdown := make(chan bool, 1)
+	errs := make(chan error, 3)
+
+	go func() {
+		if err := server.Shutdown(); err != nil {
+			errs <- err
+		}
+
+		taskRunner.Stop()
+
+		if err := database.Shutdown(); err != nil {
+			errs <- err
+		}
+
+		if err := datastore.Shutdown(); err != nil {
+			errs <- err
+		}
+
+		hasShutdown <- true
+	}()
+
+	select {
+	case <-shutdownCtx.Done():
+		log.Error(shutdownCtx.Err())
+	case <-hasShutdown:
+		log.Info("air-alert has shutdown")
+	case err := <-errs:
+		log.Error(err)
+
+		// Log any remaining errors.
+		for err := range errs {
+			log.Error(err)
+		}
+	}
 }
 
 // Execute runs the main application and/or any child subcommands.
