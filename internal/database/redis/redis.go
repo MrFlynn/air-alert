@@ -335,7 +335,7 @@ func (c *Controller) NotificationConsumerRead(ctx context.Context, group, consum
 		NoAck:    true,
 	})
 
-	return getNotificationsFromStream([]redis.Cmder{result})
+	return getNotificationsFromStream(result, count)
 }
 
 // ACKNotifications acknowledges that a set of notifications have been processed.

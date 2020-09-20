@@ -189,9 +189,7 @@ func TestGetNotifcationStream(t *testing.T) {
 		},
 	})
 
-	status := redis.NewStatusCmd(context.Background())
-
-	data, err := getNotificationsFromStream([]redis.Cmder{cmd, status})
+	data, err := getNotificationsFromStream(cmd, 2)
 	if err != nil {
 		t.Errorf("got unexpected error: %s", err)
 	}
@@ -220,7 +218,7 @@ func TestReceivedNil(t *testing.T) {
 	cmd := redis.NewXMessageSliceCmd(context.Background(), "xrange", "1", "+", "-", "count", 1)
 	cmd.SetErr(redis.Nil)
 
-	data, err := getNotificationsFromStream([]redis.Cmder{cmd})
+	data, err := getNotificationsFromStream(cmd, 1)
 	if err != nil {
 		t.Errorf("got unexpected error: %s", err)
 	}
@@ -233,7 +231,7 @@ func TestReceivedNil(t *testing.T) {
 func TestGetForecastsFromStreamBadType(t *testing.T) {
 	cmd := redis.NewBoolCmd(context.Background(), "exists", "1")
 
-	_, err := getNotificationsFromStream([]redis.Cmder{cmd})
+	_, err := getNotificationsFromStream(cmd, 1)
 	if err == nil {
 		t.Error("expected error, got nil")
 	}
