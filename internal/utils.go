@@ -16,12 +16,12 @@ const (
 
 var source = rand.NewSource(time.Now().UnixNano())
 
-// IsIsSubsetSlice checks if the first slice is a subset of the
+// IsSubsetSlice checks if the first slice is a subset of the
 // second one.
 func IsSubsetSlice(first, second []string) bool {
 	set := make(map[string]int, len(second))
 	for _, v := range second {
-		set[v] += 1
+		set[v]++
 	}
 
 	for _, v := range first {
@@ -31,7 +31,7 @@ func IsSubsetSlice(first, second []string) bool {
 		} else if count < 1 {
 			return false
 		} else {
-			set[v] -= 1
+			set[v]--
 		}
 	}
 
@@ -81,3 +81,9 @@ func CreateRandomString(size int) string {
 
 // Above credit goes the following post for inspiration:
 // https://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-go
+
+// RecalculateAverage recalculates an average by including a new value using the
+// running average method.
+func RecalculateAverage(new, avg float64, count int) float64 {
+	return (new + (avg * float64(count))) / float64(count+1)
+}

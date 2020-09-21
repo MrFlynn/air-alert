@@ -4,6 +4,7 @@ package internal
 
 import (
 	"math"
+	"math/rand"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -99,5 +100,27 @@ func TestCreateRandomString(t *testing.T) {
 
 	if size := len(str); size != 10 {
 		t.Errorf("Expected string to be 10 bytes, got %d bytes", size)
+	}
+}
+
+func TestRecalculateAverage(t *testing.T) {
+	numbers := make([]float64, 10)
+	for i := 0; i < len(numbers); i++ {
+		numbers[i] = rand.Float64()
+	}
+
+	var avgExpected float64
+	for _, n := range numbers {
+		avgExpected += n
+	}
+	avgExpected /= 10
+
+	var avgComputed float64
+	for i, n := range numbers {
+		avgComputed = RecalculateAverage(n, avgComputed, i)
+	}
+
+	if !cmp.Equal(avgExpected, avgComputed, floatComparer) {
+		t.Errorf("expected average to be %f, got %f", avgExpected, avgComputed)
 	}
 }
