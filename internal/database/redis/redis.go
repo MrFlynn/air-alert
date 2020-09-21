@@ -130,8 +130,8 @@ func (c *Controller) SetAirQuality(ctx context.Context, data []purpleapi.Respons
 
 // RawSensorData contains raw sensor from the Redis datastore.
 type RawSensorData struct {
-	ID   int              `json:"sensor_id"`
-	Data []RawQualityData `json:"measurements"`
+	ID   int               `json:"sensor_id"`
+	Data []*RawQualityData `json:"measurements"`
 }
 
 // RawQualityData contains a time stamp the corresponding pm2.5 measurement.
@@ -178,7 +178,7 @@ func (c *Controller) GetAirQuality(ctx context.Context, id int) (*RawSensorData,
 		if id == key.ID() {
 			return &RawSensorData{
 				ID:   key.ID(),
-				Data: []RawQualityData{*item},
+				Data: []*RawQualityData{item},
 			}, nil
 		}
 	}
@@ -205,11 +205,11 @@ func (c *Controller) GetAQIFromSensorsInRange(ctx context.Context, longitude, la
 		if _, ok := sensorResultMap[id]; !ok {
 			sensorResultMap[id] = &RawSensorData{
 				ID:   id,
-				Data: make([]RawQualityData, 0, 10), // There will only every be a maximum of 10 results.
+				Data: make([]*RawQualityData, 0, 10), // There will only every be a maximum of 10 results.
 			}
 		}
 
-		sensorResultMap[id].Data = append(sensorResultMap[id].Data, *item)
+		sensorResultMap[id].Data = append(sensorResultMap[id].Data, item)
 	}
 
 	rawSensorSlice := make([]*RawSensorData, 0, len(compositeDataMap))
