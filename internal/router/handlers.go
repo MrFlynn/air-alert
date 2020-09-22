@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"strconv"
 
-	"github.com/gofiber/fiber"
+	"github.com/gofiber/fiber/v2"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/mrflynn/air-alert/internal/database/redis"
 	log "github.com/sirupsen/logrus"
@@ -12,33 +12,45 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-func getAQIReadings(ctx *fiber.Ctx, datastore *redis.Controller) {
+func getAQIReadings(ctx *fiber.Ctx, datastore *redis.Controller) error {
 	long, err := strconv.ParseFloat(ctx.Query("long"), 32)
 	if err != nil {
 		log.Error("longitude parameter has invalid format")
-		ctx.Status(fiber.StatusBadRequest).SendString("invald or missing longitude parameter")
 
-		return
+		return errorInfo{
+			err: fiber.ErrBadRequest,
+			why: "invald or missing longitude parameter",
+	}
 	}
 
 	lat, err := strconv.ParseFloat(ctx.Query("lat"), 32)
 	if err != nil {
 		log.Error("latitude parameter has invalid format")
-		ctx.Status(fiber.StatusBadRequest).SendString("invalid or missing latitude parameter")
 
-		return
+		return errorInfo{
+			err: fiber.ErrBadRequest,
+			why: "invalid or missing latitude parameter",
+	}
 	}
 
-	results, err := datastore.GetAQIFromSensorsInRange(ctx.Context(), long, lat, 2000)
+	radius, err := strconv.ParseFloat(ctx.Query("radius", "2000.0"), 32)
+	if err != nil {
+		log.Error("radius parameter has invalid format")
+
+		return errorInfo{
+			err: fiber.ErrBadRequest,
+			why: "invalid radius parameter",
+		}
+	}
+
+	results, err := datastore.GetAQIFromSensorsInRange(ctx.Context(), long, lat, radius)
 	if err != nil {
 		log.Errorf("database error: %s", err)
-		ctx.Status(
-			fiber.StatusInternalServerError,
-		).SendString(
-			"could not get sensor data from database",
-		)
 
-		return
+		return errorInfo{
+			err: fiber.ErrInternalServerError,
+			why: "could not get sensor data from database",
+	}
 	}
 
 	buff := bytes.NewBuffer([]byte{})
@@ -46,9 +58,11 @@ func getAQIReadings(ctx *fiber.Ctx, datastore *redis.Controller) {
 
 	if err != nil {
 		log.Errorf("error in marshalling API response data: %s", err)
-		ctx.Status(fiber.StatusInternalServerError).SendString("error marshalling json object")
 
-		return
+		return errorInfo{
+			err: fiber.ErrInternalServerError,
+			why: "error marshalling json object",
+	}
 	}
 
 	ctx.Type("json", "utf-8")

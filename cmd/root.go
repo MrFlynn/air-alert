@@ -62,7 +62,7 @@ func init() {
 	viper.SetDefault("database.postgres.database", "airalert")
 
 	// Default web server settings.
-	viper.SetDefault("web.port", 3000)
+	viper.SetDefault("web.addr", ":3000")
 
 	// Other default settings.
 	viper.SetDefault("timezone", "UTC")
