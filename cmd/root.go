@@ -139,22 +139,7 @@ func initTasks() {
 		Rate:     5,
 		Priority: 2,
 		TTL:      60 * time.Second,
-		RunFunc: func(ctx context.Context) error {
-			log.Info("starting AQI data refresh")
-
-			resp, err := purpleapi.Get(ctx)
-			if err != nil {
-				return err
-			}
-
-			err = datastore.SetAirQuality(ctx, resp)
-			if err != nil {
-				return err
-			}
-
-			log.Info("completed AQI data refresh")
-			return nil
-		},
+		RunFunc:  updateAQITask,
 	})
 
 	// Sensor location refresh task.
@@ -162,22 +147,15 @@ func initTasks() {
 		TimeOfDay: "03:30",
 		Priority:  1,
 		TTL:       60 * time.Second,
-		RunFunc: func(ctx context.Context) error {
-			log.Info("starting sensor location refresh")
+		RunFunc:   updateSensorsTask,
+	})
 
-			resp, err := purpleapi.Get(ctx)
-			if err != nil {
-				return err
-			}
-
-			err = datastore.SetSensorLocationData(ctx, resp)
-			if err != nil {
-				return err
-			}
-
-			log.Info("completed sensor location refresh")
-			return nil
-		},
+	// Notification stream task.
+	taskRunner.AddTask(task.MinuteTask{
+		Rate:     5,
+		Priority: 3,
+		TTL:      120 * time.Second,
+		RunFunc:  generateNotifications,
 	})
 }
 
