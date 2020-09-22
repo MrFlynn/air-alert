@@ -1,8 +1,6 @@
 package router
 
 import (
-	"bytes"
-
 	"github.com/gofiber/fiber/v2"
 	jsoniter "github.com/json-iterator/go"
 	utils "github.com/mrflynn/air-alert/internal"
@@ -73,8 +71,7 @@ func getAQIReadings(ctx *fiber.Ctx, datastore *redis.Controller) error {
 		}
 	}
 
-	buff := bytes.NewBuffer([]byte{})
-	err = json.NewEncoder(buff).Encode(results)
+	err = json.NewEncoder(ctx.Type("json", "utf-8").Response().BodyWriter()).Encode(results)
 
 	if err != nil {
 		log.Errorf("error in marshalling API response data: %s", err)
@@ -85,8 +82,7 @@ func getAQIReadings(ctx *fiber.Ctx, datastore *redis.Controller) error {
 		}
 	}
 
-	ctx.Type("json", "utf-8")
-	return ctx.SendStream(buff, buff.Len())
+	return nil
 }
 
 func getAverageAQI(ctx *fiber.Ctx, datastore *redis.Controller) error {
