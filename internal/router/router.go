@@ -45,8 +45,14 @@ func NewRouter(datastore *redis.Controller) *Router {
 }
 
 func (r *Router) addRoutes() {
-	r.app.Get("/api/data", func(ctx *fiber.Ctx) {
-		getAQIReadings(ctx, r.datastore)
+	api := r.app.Group("/api/v0")
+
+	api.Get("/sensors", func(ctx *fiber.Ctx) error {
+		return getAQIReadings(ctx, r.datastore)
+	})
+
+	r.app.Get("/aqi/current", func(ctx *fiber.Ctx) error {
+		return getAverageAQI(ctx, r.datastore)
 	})
 }
 
