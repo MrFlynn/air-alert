@@ -3,10 +3,12 @@ package sql
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/SherClockHolmes/webpush-go"
 	"github.com/mrflynn/air-alert/internal/database/sql/models"
 	log "github.com/sirupsen/logrus"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
@@ -40,11 +42,12 @@ func (c *Controller) Shutdown() error {
 // UserRequest is a container for storing details about a user from a request
 // object.
 type UserRequest struct {
-	ID           int                   `json:"id,omitempty"`
-	Subscription *webpush.Subscription `json:"subscription"`
-	Longitude    float64               `json:"longitude"`
-	Latitude     float64               `json:"latitude"`
-	AQIThreshold float64               `json:"threshold"`
+	ID            int                   `json:"-"`
+	Subscription  *webpush.Subscription `json:"subscription"`
+	Longitude     float64               `json:"longitude"`
+	Latitude      float64               `json:"latitude"`
+	AQIThreshold  float64               `json:"threshold"`
+	LastCrossover null.Time             `json:"-"`
 }
 
 func userModelToUserRequest(m *models.User) UserRequest {
@@ -57,9 +60,10 @@ func userModelToUserRequest(m *models.User) UserRequest {
 				P256dh: m.PublicKey,
 			},
 		},
-		Longitude:    m.Longitude,
-		Latitude:     m.Latitude,
-		AQIThreshold: m.Threshold,
+		Longitude:     m.Longitude,
+		Latitude:      m.Latitude,
+		AQIThreshold:  m.Threshold,
+		LastCrossover: m.LastCrossover,
 	}
 }
 
@@ -105,6 +109,22 @@ func (c *Controller) GetUserWithID(ctx context.Context, id int) (UserRequest, er
 	}
 
 	return userModelToUserRequest(user), nil
+}
+
+// UpdateCrossoverTime updates the last_notification column in the database for a specific user.
+func (c *Controller) UpdateCrossoverTime(ctx context.Context, id int, updated time.Time) error {
+	user, err := models.FindUser(ctx, c.db, id)
+	if err != nil {
+		return err
+	}
+
+	user.LastCrossover = null.TimeFrom(updated)
+	_, err = user.Update(ctx, c.db, boil.Whitelist(models.UserColumns.LastCrossover))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // DeleteUser deletes a user that has a matching push url, public, and private keys.

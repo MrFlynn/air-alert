@@ -10,11 +10,13 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/SherClockHolmes/webpush-go"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	_ "github.com/lib/pq"
+	"github.com/volatiletech/null/v8"
 )
 
 var (
@@ -30,9 +32,10 @@ var (
 				P256dh: "pub_key",
 			},
 		},
-		Longitude:    0.0,
-		Latitude:     0.0,
-		AQIThreshold: 50.0,
+		Longitude:     0.0,
+		Latitude:      0.0,
+		AQIThreshold:  50.0,
+		LastCrossover: null.Time{},
 	}
 )
 
@@ -89,20 +92,21 @@ func TestCreateUser(t *testing.T) {
 	defer rows.Close()
 
 	var (
-		id         int
-		pushURL    string
-		privateKey string
-		publicKey  string
-		longitude  float64
-		latitude   float64
-		threshold  float64
+		id               int
+		pushURL          string
+		privateKey       string
+		publicKey        string
+		longitude        float64
+		latitude         float64
+		threshold        float64
+		lastNotification sql.NullTime
 	)
 
 	if !rows.Next() {
 		t.Error("expected 1 row")
 	}
 
-	err = rows.Scan(&id, &pushURL, &privateKey, &publicKey, &longitude, &latitude, &threshold)
+	err = rows.Scan(&id, &pushURL, &privateKey, &publicKey, &longitude, &latitude, &threshold, &lastNotification)
 	if err != nil {
 		t.Errorf("got unexepected error: %s", err)
 	}
@@ -138,6 +142,10 @@ func TestCreateUser(t *testing.T) {
 	if threshold != testUser.AQIThreshold {
 		t.Errorf("expected threshold to be %f, got %f", threshold, testUser.AQIThreshold)
 	}
+
+	if !cmp.Equal(lastNotification, sql.NullTime{}) {
+		t.Errorf("expected threshold to be nil, got %#v", lastNotification)
+	}
 }
 
 func TestGetAllUsers(t *testing.T) {
@@ -172,6 +180,43 @@ func TestGetUserWithInvalidID(t *testing.T) {
 	_, err := controller.GetUserWithID(context.Background(), 100)
 	if err == nil {
 		t.Error("expected error, got nil")
+	}
+}
+
+func TestUpdateCrossoverTime(t *testing.T) {
+	defer runSeq()()
+
+	now := time.Now()
+	err := controller.UpdateCrossoverTime(context.Background(), 1, time.Now())
+	if err != nil {
+		t.Errorf("got unexpected error: %s", err)
+	}
+
+	rows, err := conn.Query("select id, last_crossover from users where id = 1")
+	if err != nil {
+		t.Errorf("got unexpected error: %s", err)
+	}
+
+	var (
+		id            int
+		lastCrossover sql.NullTime
+	)
+
+	if !rows.Next() {
+		t.Error("expected 1 row")
+	}
+
+	err = rows.Scan(&id, &lastCrossover)
+	if err != nil {
+		t.Errorf("got unexepected error: %s", err)
+	}
+
+	if !lastCrossover.Valid {
+		t.Error("time is invalid")
+	}
+
+	if now.Equal(lastCrossover.Time) {
+		t.Errorf("expected time to be %#v, got %#v", now, lastCrossover.Time)
 	}
 }
 

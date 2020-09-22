@@ -7,5 +7,6 @@ create table users (
     public_key text not null,
     longitude double precision not null,
     latitude double precision not null,
-    threshold double precision not null
+    threshold double precision not null,
+    last_crossover timestamp with time zone
 );

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -23,34 +24,37 @@ import (
 
 // User is an object representing the database table.
 type User struct {
-	ID         int     `boil:"id" json:"id" toml:"id" yaml:"id"`
-	PushURL    string  `boil:"push_url" json:"push_url" toml:"push_url" yaml:"push_url"`
-	PrivateKey string  `boil:"private_key" json:"private_key" toml:"private_key" yaml:"private_key"`
-	PublicKey  string  `boil:"public_key" json:"public_key" toml:"public_key" yaml:"public_key"`
-	Longitude  float64 `boil:"longitude" json:"longitude" toml:"longitude" yaml:"longitude"`
-	Latitude   float64 `boil:"latitude" json:"latitude" toml:"latitude" yaml:"latitude"`
-	Threshold  float64 `boil:"threshold" json:"threshold" toml:"threshold" yaml:"threshold"`
+	ID            int       `boil:"id" json:"id" toml:"id" yaml:"id"`
+	PushURL       string    `boil:"push_url" json:"push_url" toml:"push_url" yaml:"push_url"`
+	PrivateKey    string    `boil:"private_key" json:"private_key" toml:"private_key" yaml:"private_key"`
+	PublicKey     string    `boil:"public_key" json:"public_key" toml:"public_key" yaml:"public_key"`
+	Longitude     float64   `boil:"longitude" json:"longitude" toml:"longitude" yaml:"longitude"`
+	Latitude      float64   `boil:"latitude" json:"latitude" toml:"latitude" yaml:"latitude"`
+	Threshold     float64   `boil:"threshold" json:"threshold" toml:"threshold" yaml:"threshold"`
+	LastCrossover null.Time `boil:"last_crossover" json:"last_crossover,omitempty" toml:"last_crossover" yaml:"last_crossover,omitempty"`
 
 	R *userR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userL  `boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var UserColumns = struct {
-	ID         string
-	PushURL    string
-	PrivateKey string
-	PublicKey  string
-	Longitude  string
-	Latitude   string
-	Threshold  string
+	ID            string
+	PushURL       string
+	PrivateKey    string
+	PublicKey     string
+	Longitude     string
+	Latitude      string
+	Threshold     string
+	LastCrossover string
 }{
-	ID:         "id",
-	PushURL:    "push_url",
-	PrivateKey: "private_key",
-	PublicKey:  "public_key",
-	Longitude:  "longitude",
-	Latitude:   "latitude",
-	Threshold:  "threshold",
+	ID:            "id",
+	PushURL:       "push_url",
+	PrivateKey:    "private_key",
+	PublicKey:     "public_key",
+	Longitude:     "longitude",
+	Latitude:      "latitude",
+	Threshold:     "threshold",
+	LastCrossover: "last_crossover",
 }
 
 // Generated where
@@ -130,22 +134,47 @@ func (w whereHelperfloat64) NIN(slice []float64) qm.QueryMod {
 	return qm.WhereNotIn(fmt.Sprintf("%s NOT IN ?", w.field), values...)
 }
 
+type whereHelpernull_Time struct{ field string }
+
+func (w whereHelpernull_Time) EQ(x null.Time) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelpernull_Time) NEQ(x null.Time) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelpernull_Time) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelpernull_Time) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
+func (w whereHelpernull_Time) LT(x null.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpernull_Time) LTE(x null.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpernull_Time) GT(x null.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpernull_Time) GTE(x null.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
 var UserWhere = struct {
-	ID         whereHelperint
-	PushURL    whereHelperstring
-	PrivateKey whereHelperstring
-	PublicKey  whereHelperstring
-	Longitude  whereHelperfloat64
-	Latitude   whereHelperfloat64
-	Threshold  whereHelperfloat64
+	ID            whereHelperint
+	PushURL       whereHelperstring
+	PrivateKey    whereHelperstring
+	PublicKey     whereHelperstring
+	Longitude     whereHelperfloat64
+	Latitude      whereHelperfloat64
+	Threshold     whereHelperfloat64
+	LastCrossover whereHelpernull_Time
 }{
-	ID:         whereHelperint{field: "\"users\".\"id\""},
-	PushURL:    whereHelperstring{field: "\"users\".\"push_url\""},
-	PrivateKey: whereHelperstring{field: "\"users\".\"private_key\""},
-	PublicKey:  whereHelperstring{field: "\"users\".\"public_key\""},
-	Longitude:  whereHelperfloat64{field: "\"users\".\"longitude\""},
-	Latitude:   whereHelperfloat64{field: "\"users\".\"latitude\""},
-	Threshold:  whereHelperfloat64{field: "\"users\".\"threshold\""},
+	ID:            whereHelperint{field: "\"users\".\"id\""},
+	PushURL:       whereHelperstring{field: "\"users\".\"push_url\""},
+	PrivateKey:    whereHelperstring{field: "\"users\".\"private_key\""},
+	PublicKey:     whereHelperstring{field: "\"users\".\"public_key\""},
+	Longitude:     whereHelperfloat64{field: "\"users\".\"longitude\""},
+	Latitude:      whereHelperfloat64{field: "\"users\".\"latitude\""},
+	Threshold:     whereHelperfloat64{field: "\"users\".\"threshold\""},
+	LastCrossover: whereHelpernull_Time{field: "\"users\".\"last_crossover\""},
 }
 
 // UserRels is where relationship names are stored.
@@ -165,8 +194,8 @@ func (*userR) NewStruct() *userR {
 type userL struct{}
 
 var (
-	userAllColumns            = []string{"id", "push_url", "private_key", "public_key", "longitude", "latitude", "threshold"}
-	userColumnsWithoutDefault = []string{"push_url", "private_key", "public_key", "longitude", "latitude", "threshold"}
+	userAllColumns            = []string{"id", "push_url", "private_key", "public_key", "longitude", "latitude", "threshold", "last_crossover"}
+	userColumnsWithoutDefault = []string{"push_url", "private_key", "public_key", "longitude", "latitude", "threshold", "last_crossover"}
 	userColumnsWithDefault    = []string{"id"}
 	userPrimaryKeyColumns     = []string{"id"}
 )

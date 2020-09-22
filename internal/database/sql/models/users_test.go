@@ -568,7 +568,7 @@ func testUsersSelect(t *testing.T) {
 }
 
 var (
-	userDBTypes = map[string]string{`ID`: `integer`, `PushURL`: `text`, `PrivateKey`: `text`, `PublicKey`: `text`, `Longitude`: `double precision`, `Latitude`: `double precision`, `Threshold`: `double precision`}
+	userDBTypes = map[string]string{`ID`: `integer`, `PushURL`: `text`, `PrivateKey`: `text`, `PublicKey`: `text`, `Longitude`: `double precision`, `Latitude`: `double precision`, `Threshold`: `double precision`, `LastCrossover`: `timestamp with time zone`}
 	_           = bytes.MinRead
 )
 
