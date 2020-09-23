@@ -25,17 +25,6 @@ func addZSlice(r *redis.ZSliceCmd, s []redis.Z) {
 	*realPtrToVal = s
 }
 
-// This function is similar to the one above, but with XMessages instead.
-func addXMessageSlice(r *redis.XMessageSliceCmd, s []redis.XMessage) {
-	rPtr := reflect.Indirect(reflect.ValueOf(r))
-
-	resultSlice := rPtr.FieldByName("val")
-	ptrToVal := unsafe.Pointer(resultSlice.UnsafeAddr())
-
-	realPtrToVal := (*[]redis.XMessage)(ptrToVal)
-	*realPtrToVal = s
-}
-
 func TestGetFullIDFromRedisKey(t *testing.T) {
 	cmd := redis.NewZSliceCmd(
 		context.Background(), "zrevrange", "data:pm25:1", 0, 1, "withscores",
@@ -169,25 +158,29 @@ func TestMarshalRawDataBadType(t *testing.T) {
 }
 
 func TestGetNotifcationStream(t *testing.T) {
-	cmd := redis.NewXMessageSliceCmd(context.Background(), "xrange", "1", "+", "-", "count", 1)
-	addXMessageSlice(cmd, []redis.XMessage{
+	cmd := redis.NewXStreamSliceCmdResult([]redis.XStream{
 		{
-			ID: "0",
-			Values: map[string]interface{}{
-				"uid":      1,
-				"aqi":      "3.0",
-				"forecast": "0",
+			Stream: "test",
+			Messages: []redis.XMessage{
+				{
+					ID: "0",
+					Values: map[string]interface{}{
+						"uid":      1,
+						"aqi":      "3.0",
+						"forecast": "0",
+					},
+				},
+				{
+					ID: "1",
+					Values: map[string]interface{}{
+						"uid":      1,
+						"aqi":      "2.5",
+						"forecast": "2",
+					},
+				},
 			},
 		},
-		{
-			ID: "1",
-			Values: map[string]interface{}{
-				"uid":      1,
-				"aqi":      "2.5",
-				"forecast": "2",
-			},
-		},
-	})
+	}, nil)
 
 	data, err := getNotificationsFromStream(cmd, 2)
 	if err != nil {
@@ -215,7 +208,7 @@ func TestGetNotifcationStream(t *testing.T) {
 }
 
 func TestReceivedNil(t *testing.T) {
-	cmd := redis.NewXMessageSliceCmd(context.Background(), "xrange", "1", "+", "-", "count", 1)
+	cmd := redis.NewXStreamSliceCmd(context.Background(), "xrange", "1", "+", "-", "count", 1)
 	cmd.SetErr(redis.Nil)
 
 	data, err := getNotificationsFromStream(cmd, 1)

@@ -107,7 +107,7 @@ func getNotificationsFromStream(c redis.Cmder, count int64) ([]NotificationStrea
 	streamData := make([]NotificationStream, 0, count)
 
 	switch cmd := c.(type) {
-	case *redis.XMessageSliceCmd:
+	case *redis.XStreamSliceCmd:
 		var err error
 
 		stream, err := cmd.Result()
@@ -122,29 +122,31 @@ func getNotificationsFromStream(c redis.Cmder, count int64) ([]NotificationStrea
 		}
 
 		for _, s := range stream {
-			uid := s.Values["uid"].(int)
+			for _, m := range s.Messages {
+				uid := m.Values["uid"].(int)
 
-			var aqi float64
-			var forecast int
+				var aqi float64
+				var forecast int
 
-			aqi, err = strconv.ParseFloat(s.Values["aqi"].(string), 64)
-			if err != nil {
-				log.Debugf("could not conver aqi field from stream: %s", err)
-				continue
+				aqi, err = strconv.ParseFloat(m.Values["aqi"].(string), 64)
+				if err != nil {
+					log.Debugf("could not conver aqi field from stream: %s", err)
+					continue
+				}
+
+				forecast, err = strconv.Atoi(m.Values["forecast"].(string))
+				if err != nil {
+					log.Debugf("could not convert forecast field from stream %s", err)
+					continue
+				}
+
+				streamData = append(streamData, NotificationStream{
+					MessageID: m.ID,
+					UID:       uid,
+					AQI:       aqi,
+					Forecast:  AQIForecast(forecast),
+				})
 			}
-
-			forecast, err = strconv.Atoi(s.Values["forecast"].(string))
-			if err != nil {
-				log.Debugf("could not convert forecast field from stream %s", err)
-				continue
-			}
-
-			streamData = append(streamData, NotificationStream{
-				MessageID: s.ID,
-				UID:       uid,
-				AQI:       aqi,
-				Forecast:  AQIForecast(forecast),
-			})
 		}
 	default:
 		return nil, fmt.Errorf("could not find valid conversion for %T", cmd)
