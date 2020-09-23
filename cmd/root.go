@@ -10,6 +10,7 @@ import (
 
 	"github.com/mrflynn/air-alert/internal/database/redis"
 	pg "github.com/mrflynn/air-alert/internal/database/sql"
+	"github.com/mrflynn/air-alert/internal/notifications"
 	"github.com/mrflynn/air-alert/internal/router"
 	"github.com/mrflynn/air-alert/internal/task"
 	log "github.com/sirupsen/logrus"
@@ -25,6 +26,7 @@ var (
 	datastore  *redis.Controller
 	database   *pg.Controller
 	taskRunner *task.Runner
+	notifier   *notifications.Sender
 	server     *router.Router
 
 	rootCmd = &cobra.Command{
@@ -63,6 +65,13 @@ func init() {
 
 	// Default web server settings.
 	viper.SetDefault("web.addr", ":3000")
+
+	// Default notification settings.
+	viper.SetDefault("web.notifications.threads", 4)
+	viper.SetDefault("web.notifications.group", "notification_delivery")
+	viper.SetDefault("web.notifications.public_key", "")
+	viper.SetDefault("web.notifications.private_key", "")
+	viper.SetDefault("web.notifications.admin_mail", "admin@localhost")
 
 	// Other default settings.
 	viper.SetDefault("timezone", "UTC")
@@ -130,6 +139,8 @@ func initApp() {
 		log.Fatal(err)
 	}
 
+	notifier = notifications.NewSender(datastore, database)
+
 	server = router.NewRouter(datastore)
 }
 
@@ -168,6 +179,8 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	notifier.Run()
+
 	if err := server.Run(); err != nil {
 		return err
 	}
@@ -191,6 +204,8 @@ func shutdown(cmd *cobra.Command, args []string) {
 		}
 
 		taskRunner.Stop()
+
+		notifier.Shutdown()
 
 		if err := database.Shutdown(); err != nil {
 			errs <- err
