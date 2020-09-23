@@ -331,6 +331,17 @@ func (c *Controller) AddToNotificationStream(ctx context.Context, data ...Notifi
 	return err
 }
 
+// CreateConsumerGroup creates a consumer group and the associated stream.
+func (c *Controller) CreateConsumerGroup(ctx context.Context, group string) error {
+	err := c.db.XGroupCreateMkStream(ctx, notificationStreamKey, group, "0").Err()
+	if strings.Contains(err.Error(), "Consumer Group name already exists") {
+		// This is an error that can be safely ignored.
+		return nil
+	}
+
+	return err
+}
+
 // NotificationConsumerRead reads n notifications from the "notifications" stream and serializes
 // them into an array of NotificationStream structs.
 func (c *Controller) NotificationConsumerRead(ctx context.Context, group, consumer string, count int64) ([]NotificationStream, error) {
