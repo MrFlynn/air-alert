@@ -335,9 +335,11 @@ func (c *Controller) AddToNotificationStream(ctx context.Context, data ...Notifi
 // CreateConsumerGroup creates a consumer group and the associated stream.
 func (c *Controller) CreateConsumerGroup(ctx context.Context, group string) error {
 	err := c.db.XGroupCreateMkStream(ctx, notificationStreamKey, group, "0").Err()
-	if strings.Contains(err.Error(), "Consumer Group name already exists") {
-		// This is an error that can be safely ignored.
-		return nil
+	if err != nil {
+		if strings.Contains(err.Error(), "Consumer Group name already exists") {
+			// This is an error that can be safely ignored.
+			return nil
+		}
 	}
 
 	return err
