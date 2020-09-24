@@ -86,7 +86,7 @@ func getAQIReadings(ctx *fiber.Ctx, datastore *redis.Controller) error {
 }
 
 func getAverageAQI(ctx *fiber.Ctx, datastore *redis.Controller) error {
-	lat, long, radius, err := getLocationParameters(ctx)
+	long, lat, radius, err := getLocationParameters(ctx)
 	if err != nil {
 		return err
 	}
