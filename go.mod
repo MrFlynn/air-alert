@@ -10,6 +10,7 @@ require (
 	github.com/go-co-op/gocron v0.3.0
 	github.com/go-redis/redis/v8 v8.0.0-beta.8
 	github.com/gofiber/fiber/v2 v2.0.2
+	github.com/gofiber/template v1.6.2
 	github.com/google/go-cmp v0.5.2
 	github.com/json-iterator/go v1.1.10
 	github.com/kat-co/vala v0.0.0-20170210184112-42e1d8b61f12
@@ -23,7 +24,6 @@ require (
 	github.com/spf13/afero v1.3.5 // indirect
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.7.1
 	github.com/volatiletech/null/v8 v8.1.0
 	github.com/volatiletech/randomize v0.0.1
@@ -34,5 +34,4 @@ require (
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/ini.v1 v1.61.0 // indirect
-	gopkg.in/yaml.v2 v2.3.0 // indirect
 )

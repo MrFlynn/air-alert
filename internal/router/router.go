@@ -2,8 +2,10 @@ package router
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/template/html"
 	"github.com/mrflynn/air-alert/internal/database/redis"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -28,7 +30,7 @@ func (e errorInfo) Error() string {
 
 // NewRouter creates a new Router struct from the given context.
 func NewRouter(datastore *redis.Controller) *Router {
-	return &Router{
+	router := &Router{
 		Address: viper.GetString("web.addr"),
 		app: fiber.New(fiber.Config{
 			DisableStartupMessage: true,
@@ -39,9 +41,17 @@ func NewRouter(datastore *redis.Controller) *Router {
 
 				return ctx.SendStatus(fiber.StatusInternalServerError)
 			},
+			ReadTimeout:  10 * time.Second,
+			WriteTimeout: 30 * time.Second,
+			IdleTimeout:  30 * time.Second,
+			Views:        html.New(viper.GetString("web.template_dir"), ".html").Reload(true),
 		}),
 		datastore: datastore,
 	}
+
+	router.app.Static("/static", viper.GetString("web.static_dir"))
+
+	return router
 }
 
 func (r *Router) addRoutes() {

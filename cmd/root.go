@@ -65,6 +65,8 @@ func init() {
 
 	// Default web server settings.
 	viper.SetDefault("web.addr", ":3000")
+	viper.SetDefault("web.template_dir", "./templates")
+	viper.SetDefault("web.static_dir", "./static")
 
 	// Default notification settings.
 	viper.SetDefault("web.notifications.threads", 4)
