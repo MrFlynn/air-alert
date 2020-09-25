@@ -64,6 +64,10 @@ func (r *Router) addRoutes() {
 	r.app.Get("/aqi/current", func(ctx *fiber.Ctx) error {
 		return getAverageAQI(ctx, r.datastore)
 	})
+
+	r.app.Get("/", func(ctx *fiber.Ctx) error {
+		return ctx.Render("index", fiber.Map{})
+	})
 }
 
 // Run starts the router and handles all shutdown operations if an external shutdown signal is
