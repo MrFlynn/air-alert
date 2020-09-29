@@ -9,6 +9,7 @@ import (
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"golang.org/x/time/rate"
@@ -66,6 +67,7 @@ func (r *Response) UnmarshalJSON(data []byte) error {
 	type Alias Response
 	aux := &struct {
 		Location string `json:"DEVICE_LOCATIONTYPE,omitempty"`
+		PM25     string `json:"PM2_5Value"`
 		*Alias
 	}{
 		Alias: (*Alias)(r),
@@ -76,6 +78,12 @@ func (r *Response) UnmarshalJSON(data []byte) error {
 	}
 
 	r.Location = toLocation(aux.Location)
+
+	// If we get something like `nan` we want to be able to discard it without
+	// preventing other, valid data from being parsed.
+	if val, err := decimal.NewFromString(aux.PM25); err == nil {
+		r.PM25, _ = val.Float64()
+	}
 
 	return nil
 }
