@@ -2,27 +2,29 @@
   "name": "air-alert",
   "version": "0.9.0",
   "description": "Static assets for airalert.fyi.",
-  "main": "index.js",
   "scripts": {
-    "build": "webpack --mode production"
+    "build": "webpack --config=webpack.config.prod.js"
   },
-  "repository": {
-    "type": "git",
-    "url": "github.com/mrflynn/air-alert"
-  },
+  "private": true,
   "author": "Nick Pleatsikas <nick@pleatsikas.me>",
   "license": "Apache-2.0",
   "devDependencies": {
+    "@babel/core": "^7.11.6",
     "autoprefixer": "^10.0.0",
+    "babel-loader": "^8.1.0",
     "bulma": "^0.9.0",
+    "clean-webpack-plugin": "^3.0.0",
     "css-loader": "^4.3.0",
-    "cssnano": "^4.1.10",
     "mini-css-extract-plugin": "^0.11.2",
     "node-sass": "^4.14.1",
+    "optimize-css-assets-webpack-plugin": "^5.0.4",
     "postcss": "^8.0.9",
     "postcss-loader": "^4.0.2",
     "sass-loader": "^10.0.2",
+    "style-loader": "^1.2.1",
+    "terser-webpack-plugin": "^4.2.2",
     "webpack": "^4.44.2",
-    "webpack-cli": "^3.3.12"
+    "webpack-cli": "^3.3.12",
+    "webpack-merge": "^5.1.4"
   }
 }
