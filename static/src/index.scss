@@ -1,7 +1,12 @@
 @charset "utf-8";
 
-.container {
-  margin-top: 15%;
+#main {
+  margin-top: 10%;
+}
+
+#aqi-box {
+  background-color: hsl(141, 53%, 53%);
+  transition: background-color 0.4s linear;
 }
 
 @import "bulma";
