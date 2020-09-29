@@ -2,7 +2,7 @@
   <head>
     <title>Air Alert</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="static/styles.css">
+    <link rel="stylesheet" href="static/main.css">
   </head>
   <body>
     {{template "components/navbar" .}}
@@ -10,21 +10,5 @@
       {{embed}}
     </div>
   </body>
-  <script>
-    if (!navigator.geolocation) {
-      console.error("geolocation not supported")
-    } else {
-      navigator.geolocation.getCurrentPosition(l => {
-        getAQI(l.coords.latitude, l.coords.longitude)
-      },
-      e => console.error(e))
-    }
-
-    function getAQI(latitude, longitude) {
-      fetch(`/aqi/current?lat=${latitude}&long=${longitude}`)
-        .then(resp => resp.text())
-        .then(data => document.getElementById("aqi").textContent = data)
-        .catch(e => console.error(e))
-    }
-  </script>
+  <script src="static/main.js"></script>
 </html>
