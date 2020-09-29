@@ -66,7 +66,7 @@ func (r *Router) addRoutes() {
 	})
 
 	r.app.Get("/", func(ctx *fiber.Ctx) error {
-		return ctx.Render("index", fiber.Map{})
+		return ctx.Render("components/home", fiber.Map{}, "index")
 	})
 }
 

@@ -5,20 +5,9 @@
     <link rel="stylesheet" href="static/styles.css">
   </head>
   <body>
-    {{template "navbar" .}}
-    <div class="container is-mobile">
-      <div class="columns is-centered">
-        <div class="column is-4">
-          <div class="tile is-ancestor">
-            <div class="tile is-parent">
-              <article class="tile is-child box">
-                <p class="subtitle">The AQI is now</p>
-                <p class="title" id="aqi">0</p>
-              </article>
-            </div>
-          </div>
-        </div>
-      </div>
+    {{template "components/navbar" .}}
+    <div id="main" class="container is-mobile">
+      {{embed}}
     </div>
   </body>
   <script>
