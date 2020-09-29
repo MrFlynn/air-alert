@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"github.com/mrflynn/air-alert/internal/database/redis"
@@ -95,6 +96,8 @@ func initConfig() {
 		viper.SetConfigType("toml")
 	}
 
+	viper.SetEnvPrefix("AIR_ALERT")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {
