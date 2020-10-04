@@ -146,7 +146,7 @@ func initApp() {
 
 	notifier = notifications.NewSender(datastore, database)
 
-	server = router.NewRouter(datastore)
+	server = router.NewRouter(datastore, database)
 }
 
 func initTasks() {

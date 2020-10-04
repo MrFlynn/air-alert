@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/template/html"
 	"github.com/mrflynn/air-alert/internal/database/redis"
+	"github.com/mrflynn/air-alert/internal/database/sql"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -17,6 +18,7 @@ type Router struct {
 
 	app       *fiber.App
 	datastore *redis.Controller
+	database  *sql.Controller
 }
 
 type errorInfo struct {
@@ -29,7 +31,7 @@ func (e errorInfo) Error() string {
 }
 
 // NewRouter creates a new Router struct from the given context.
-func NewRouter(datastore *redis.Controller) *Router {
+func NewRouter(datastore *redis.Controller, database *sql.Controller) *Router {
 	router := &Router{
 		Address: viper.GetString("web.addr"),
 		app: fiber.New(fiber.Config{
@@ -47,6 +49,7 @@ func NewRouter(datastore *redis.Controller) *Router {
 			Views:        html.New(viper.GetString("web.template_dir"), ".html").Reload(true),
 		}),
 		datastore: datastore,
+		database:  database,
 	}
 
 	router.app.Static("/static", viper.GetString("web.static_dir"))
