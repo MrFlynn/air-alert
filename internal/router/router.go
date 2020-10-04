@@ -58,18 +58,26 @@ func NewRouter(datastore *redis.Controller, database *sql.Controller) *Router {
 }
 
 func (r *Router) addRoutes() {
-	api := r.app.Group("/api/v0")
+	r.app.Get("/", func(ctx *fiber.Ctx) error {
+		return ctx.Render("components/home", fiber.Map{}, "index")
+	})
 
-	api.Get("/sensors", func(ctx *fiber.Ctx) error {
-		return getAQIReadings(ctx, r.datastore)
+	r.app.Post("/subscribe", func(ctx *fiber.Ctx) error {
+		return subscribeToNotifications(ctx, r.database)
+	})
+
+	r.app.Delete("/unsubscribe", func(ctx *fiber.Ctx) error {
+		return unsubscribeFromNofications(ctx, r.database)
 	})
 
 	r.app.Get("/aqi/current", func(ctx *fiber.Ctx) error {
 		return getAverageAQI(ctx, r.datastore)
 	})
 
-	r.app.Get("/", func(ctx *fiber.Ctx) error {
-		return ctx.Render("components/home", fiber.Map{}, "index")
+	api := r.app.Group("/api/v0")
+
+	api.Get("/sensors", func(ctx *fiber.Ctx) error {
+		return getAQIReadings(ctx, r.datastore)
 	})
 }
 

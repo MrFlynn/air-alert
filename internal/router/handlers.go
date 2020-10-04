@@ -5,6 +5,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	utils "github.com/mrflynn/air-alert/internal"
 	"github.com/mrflynn/air-alert/internal/database/redis"
+	"github.com/mrflynn/air-alert/internal/database/sql"
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 )
@@ -124,4 +125,60 @@ func getAverageAQI(ctx *fiber.Ctx, datastore *redis.Controller) error {
 	}
 
 	return ctx.SendString(decimal.NewFromFloat(aqi).Round(1).String())
+}
+
+func subscribeToNotifications(ctx *fiber.Ctx, database *sql.Controller) error {
+	var req sql.UserRequest
+
+	err := ctx.BodyParser(&req)
+	if err != nil {
+		log.Errorf("could not parse subscription request: %s", err)
+
+		return errorInfo{
+			err: fiber.ErrBadRequest,
+			why: "could not parse subscription request",
+		}
+	}
+
+	id, err := database.CreateUser(ctx.Context(), req)
+	if err != nil {
+		log.Errorf("could not create user: %s", err)
+
+		return errorInfo{
+			err: fiber.ErrInternalServerError,
+			why: "could not subscribe user",
+		}
+	}
+
+	log.Infof("registered user %d", id)
+
+	return ctx.SendStatus(fiber.StatusCreated)
+}
+
+func unsubscribeFromNofications(ctx *fiber.Ctx, database *sql.Controller) error {
+	var req sql.UserRequest
+
+	err := ctx.BodyParser(&req)
+	if err != nil {
+		log.Errorf("could not parse unsubscribe request: %s", err)
+
+		return errorInfo{
+			err: fiber.ErrBadRequest,
+			why: "could not parse unsubscribe request",
+		}
+	}
+
+	err = database.DeleteUser(ctx.Context(), req)
+	if err != nil {
+		log.Errorf("could not delete user: %s", err)
+
+		return errorInfo{
+			err: fiber.ErrInternalServerError,
+			why: "could not unsubcribe user",
+		}
+	}
+
+	log.Info("unsubscribed user")
+
+	return ctx.SendStatus(fiber.StatusOK)
 }
