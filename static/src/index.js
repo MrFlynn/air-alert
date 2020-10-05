@@ -1,12 +1,17 @@
 import './index.scss'
 
+// Get client current location.
 if (!navigator.geolocation) {
   console.error("geolocation not supported");
 } else {
-  navigator.geolocation.getCurrentPosition(l => {
-    getAQI(l.coords.latitude, l.coords.longitude);
-  },
-  e => console.error(e));
+  getPosition(getAQI)
+}
+
+function getPosition(callback) {
+  navigator.geolocation.getCurrentPosition(
+    pos => callback(pos.coords.latitude, pos.coords.longitude),
+    err => console.error(err)
+  )
 }
 
 function getAQI(latitude, longitude) {
