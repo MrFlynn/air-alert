@@ -165,7 +165,7 @@ func TestGetNotifcationStream(t *testing.T) {
 				{
 					ID: "0",
 					Values: map[string]interface{}{
-						"uid":      1,
+						"uid":      "1",
 						"aqi":      "3.0",
 						"forecast": "0",
 					},
@@ -173,7 +173,7 @@ func TestGetNotifcationStream(t *testing.T) {
 				{
 					ID: "1",
 					Values: map[string]interface{}{
-						"uid":      1,
+						"uid":      "1",
 						"aqi":      "2.5",
 						"forecast": "2",
 					},
