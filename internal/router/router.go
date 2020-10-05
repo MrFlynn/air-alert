@@ -1,6 +1,7 @@
 package router
 
 import (
+	"encoding/base64"
 	"fmt"
 	"time"
 
@@ -52,7 +53,7 @@ func NewRouter(datastore *redis.Controller, database *sql.Controller) *Router {
 		database:  database,
 	}
 
-	router.app.Static("/static", viper.GetString("web.static_dir"))
+	router.app.Static("/", viper.GetString("web.static_dir"))
 
 	return router
 }
@@ -64,6 +65,20 @@ func (r *Router) addRoutes() {
 
 	r.app.Post("/subscribe", func(ctx *fiber.Ctx) error {
 		return subscribeToNotifications(ctx, r.database)
+	})
+
+	r.app.Get("/subscribe/key", func(ctx *fiber.Ctx) error {
+		key, err := base64.RawURLEncoding.DecodeString(viper.GetString("web.notifications.public_key"))
+		if err != nil {
+			log.Errorf("could not decode vapid public key: %s", err)
+
+			return errorInfo{
+				err: fiber.ErrInternalServerError,
+				why: "could not render home page",
+			}
+		}
+
+		return ctx.Send(key)
 	})
 
 	r.app.Delete("/unsubscribe", func(ctx *fiber.Ctx) error {
