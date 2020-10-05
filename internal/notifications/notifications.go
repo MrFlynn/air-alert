@@ -80,8 +80,8 @@ func (s *Sender) dispatch() {
 
 				if err != nil {
 					log.Errorf("got error from web push delivery service: %s", err)
-				} else if resp.StatusCode != http.StatusOK {
-					log.Error("got non-200 response from push service")
+				} else if resp.StatusCode != http.StatusCreated {
+					log.Errorf("got non-201 response from push service: %d", resp.StatusCode)
 				} else {
 					s.datastore.ACKNotifications(ctx, s.Group, n)
 				}

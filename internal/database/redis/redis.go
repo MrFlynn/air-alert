@@ -351,7 +351,7 @@ func (c *Controller) NotificationConsumerRead(ctx context.Context, group, consum
 	result := c.db.XReadGroup(ctx, &redis.XReadGroupArgs{
 		Group:    group,
 		Consumer: consumer,
-		Streams:  []string{notificationStreamKey, "0-0"},
+		Streams:  []string{notificationStreamKey, ">"},
 		Count:    count,
 		Block:    200 * time.Millisecond,
 		NoAck:    true,

@@ -123,7 +123,11 @@ func getNotificationsFromStream(c redis.Cmder, count int64) ([]NotificationStrea
 
 		for _, s := range stream {
 			for _, m := range s.Messages {
-				uid := m.Values["uid"].(int)
+				uid, err := strconv.Atoi(m.Values["uid"].(string))
+				if err != nil {
+					log.Debugf("could not convert %s to uid, skipping...", m.Values["uid"].(string))
+					continue
+				}
 
 				var aqi float64
 				var forecast int
