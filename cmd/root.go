@@ -53,6 +53,10 @@ web push notifications`,
 		RunE:    run,
 		PostRun: shutdown,
 	}
+
+	// ProgramInfoStore stores non-configuration related configurations. This is used to store
+	// internal-only configurations set by the program that do not need to be exposed to the user.
+	ProgramInfoStore = viper.New()
 )
 
 func init() {
@@ -65,7 +69,7 @@ func init() {
 	rootCmd.Flags().MarkHidden("skip-startup") // The above should not be in help menus.
 
 	// Program information.
-	viper.SetDefault("author", "Nick Pleatsikas <nick@pleatsikas.me>")
+	ProgramInfoStore.SetDefault("author", "Nick Pleatsikas <nick@pleatsikas.me>")
 
 	// Default redis settings.
 	viper.SetDefault("database.redis.addr", ":6379")

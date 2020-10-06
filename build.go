@@ -3,7 +3,7 @@ package main
 import (
 	"time"
 
-	"github.com/spf13/viper"
+	"github.com/mrflynn/air-alert/cmd"
 )
 
 // Build variables
@@ -19,7 +19,7 @@ func init() {
 		buildDate = time.Unix(0, 0)
 	}
 
-	viper.SetDefault("version", version)
-	viper.SetDefault("commit", commit)
-	viper.SetDefault("date", buildDate)
+	cmd.ProgramInfoStore.SetDefault("version", version)
+	cmd.ProgramInfoStore.SetDefault("commit", commit)
+	cmd.ProgramInfoStore.SetDefault("date", buildDate)
 }
