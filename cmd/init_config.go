@@ -7,10 +7,11 @@ import (
 )
 
 var keysCmd = &cobra.Command{
-	Use:   "keys",
-	Short: "Generates VAPID keys for web push notifications",
-	Long:  "Generates VAPID keys and stores them in the application config file",
-	RunE:  generateKeys,
+	Use:   "init-config",
+	Short: "Initializes configuration file with defaults.",
+	Long: `Initializes existing, empty configuration file with program defaults as well as generating
+VAPID keys and stores them in the configuration file`,
+	RunE: generateKeys,
 }
 
 func init() {
