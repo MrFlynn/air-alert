@@ -35,13 +35,28 @@ var (
 		Short: "A server for alerting people to air quality changes",
 		Long: `Air Alert is a web application for alerting people to changes in air quality through 
 web push notifications`,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			var err error
+
+			err = initApp()
+			if err != nil {
+				return err
+			}
+
+			err = initTasks()
+			if err != nil {
+				return err
+			}
+
+			return nil
+		},
 		RunE:    run,
 		PostRun: shutdown,
 	}
 )
 
 func init() {
-	cobra.OnInitialize(initConfig, initApp, initTasks)
+	cobra.OnInitialize(initConfig)
 
 	rootCmd.Flags().StringVarP(
 		&configFile, "config", "c", "", "configuration file (default is $PWD/config.toml)",
@@ -109,17 +124,17 @@ func initConfig() {
 	}
 }
 
-func initApp() {
+func initApp() error {
 	var err error
 
 	datastore, err = redis.NewController()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	taskRunner, err = task.NewRunner()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	var dbConn *sql.DB
@@ -136,43 +151,58 @@ func initApp() {
 	)
 
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	database, err = pg.NewController(dbConn)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	notifier = notifications.NewSender(datastore, database)
 
 	server = router.NewRouter(datastore, database)
+
+	return nil
 }
 
-func initTasks() {
+func initTasks() error {
+	var err error
+
 	// Air quality refresh task.
-	taskRunner.AddTask(task.MinuteTask{
+	err = taskRunner.AddTask(task.MinuteTask{
 		Rate:     5,
 		Priority: 2,
 		TTL:      60 * time.Second,
 		RunFunc:  updateAQITask,
 	})
+	if err != nil {
+		return err
+	}
 
 	// Sensor location refresh task.
-	taskRunner.AddTask(task.DailyTask{
+	err = taskRunner.AddTask(task.DailyTask{
 		TimeOfDay: "03:30",
 		Priority:  1,
 		TTL:       60 * time.Second,
 		RunFunc:   updateSensorsTask,
 	})
+	if err != nil {
+		return err
+	}
 
 	// Notification stream task.
-	taskRunner.AddTask(task.MinuteTask{
+	err = taskRunner.AddTask(task.MinuteTask{
 		Rate:     5,
 		Priority: 3,
 		TTL:      120 * time.Second,
 		RunFunc:  generateNotifications,
 	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func run(cmd *cobra.Command, args []string) error {
