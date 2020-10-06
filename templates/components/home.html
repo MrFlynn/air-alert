@@ -10,8 +10,15 @@
       <div class="tile is-parent">
         <article class="tile is-child notification is-info box">
           <p class="title">Notifications</p>
+          <p>
+            Subscribe to AQI forecast notifications so you have the most 
+            up-to-date information about the air quality around you.
+          </p>
+          <br>
+          <button id="toggle-modal" class="button is-success">Subscribe</button>
         </article>
       </div>
     </div>
   </div>
+  {{template "components/modal" .}}
 </div>

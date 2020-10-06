@@ -1,0 +1,31 @@
+<div id="subscribe-modal" class="modal">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title">Notification Preferences</p>
+      <button id="toggle-modal" class="delete" aria-label="close"></button>
+    </header>
+    <section class="modal-card-body">
+      <p class="title">Subscribe</p>
+      <p>
+        Select your preferred AQI threshold from the following options. If the
+        AQI at you current location goes above <i>or</i> below this threshold,
+        you will be notified.
+      </p>
+      <br>
+      <div class="select">
+        <select id="threshold-preferences">
+          <option value="50">Sensitive (50)</option>
+          <option value="75">Moderate (75)</option>
+          <option value="100">Low (100)</option>
+          <option value="125">Very Low (125)</option>
+        </select>
+      </div>
+    </section>
+    <section class="modal-card-foot">
+      <button id="subscribe-button" class="is-success button">Subscribe</button>
+      <button id="stop-notifications" class="button is-danger">Stop Notifications</button>
+      <button id="toggle-modal" class="button">Cancel</button>
+    </section>
+  </div>
+</div>

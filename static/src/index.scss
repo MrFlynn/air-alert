@@ -9,4 +9,43 @@
   transition: background-color 0.4s linear;
 }
 
+#subscribe-modal {
+  -webkit-animation: window-fade-in ease 0.4s;
+  -moz-animation: window-fade-in ease 0.4s;
+  -o-animation: window-fade-in ease 0.4s;
+  animation: window-fade-in ease 0.4s;
+}
+
+#stop-notifications {
+  display: none;
+}
+
+@mixin keyframes($name) {
+  @-webkit-keyframes #{$name} {
+    @content;
+  }
+
+  @-moz-keyframes #{$name} {
+    @content;
+  }
+
+  @-o-keyframes #{$name} {
+    @content;
+  }
+
+  @keyframes #{$name} {
+    @content;
+  }
+}
+
+@include keyframes(window-fade-in) {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
 @import "bulma";
