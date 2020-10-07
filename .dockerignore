@@ -1,0 +1,17 @@
+# Git files.
+.git/
+.github/
+.gitignore
+
+# Build artifacts.
+/static/dist/
+/static/node_modules/
+
+# Configuration files.
+.vscode/
+.editorconfig
+*.toml
+
+# Human readable files.
+README.md
+LICENSE
