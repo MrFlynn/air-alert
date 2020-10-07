@@ -1,0 +1,64 @@
+project_name: "air-alert"
+before:
+  hooks:
+    - go mod download
+    # Build frontend components.
+    - npm install --prefix static/
+    - npm run build --prefix static/
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+dockers:
+  - binaries:
+      - "{{ .ProjectName }}"
+    goos: linux
+    goarch: amd64
+    dockerfile: Dockerfile
+    image_templates:
+      - "docker.io/mrflynn/{{ .ProjectName }}:latest"
+      - "docker.io/mrflynn/{{ .ProjectName }}:{{ .Tag }}"
+      - "ghcr.io/mrflynn/{{ .ProjectName }}:latest"
+      - "ghcr.io/mrflynn/{{ .ProjectName }}:{{ .Tag }}"
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{ .Date }}"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.licenses=Apache-2.0"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--build-arg=VERSION={{ .Version }}"
+      - "--build-arg=COMMIT={{ .FullCommit }}"
+      - "--build-arg=DATE={{ .Date }}"
+    extra_files:
+      - cmd/
+      - internal/
+      - static/
+      - templates/
+      - build.go
+      - main.go
+      - go.mod
+      - go.sum
+archives:
+  - builds:
+      - "{{ .ProjectName }}"
+    wrap_in_directory: true
+    files:
+      - README.md
+      - LICENSE
+      - static/dist/*
+      - templates/*
+checksum:
+  name_template: "SHA256SUMS"
+snapshot:
+  name_template: "{{ .Tag }}-RC-{{ .Commit }}"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^config:"

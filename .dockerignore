@@ -4,6 +4,7 @@
 .gitignore
 
 # Build artifacts.
+dist/
 /static/dist/
 /static/node_modules/
 
@@ -11,6 +12,7 @@
 .vscode/
 .editorconfig
 *.toml
+config/**/*
 
 # Human readable files.
 README.md
