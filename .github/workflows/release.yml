@@ -1,0 +1,35 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.15'
+      - uses: actions/setup-node@v2-beta
+        with:
+          node-version: '12'
+      - name: Log into Docker.io
+        uses: azure/docker-login@v1
+        with:
+          username: mrflynn
+          password: ${{ secrets.DOCKER_REGISTRY_KEY }}
+      - name: Log into Github container registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ghcr.io
+          username: mrflynn
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: goreleaser/goreleaser-action@v2
+        with:
+          version: latest
+          args: release --rm-dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
