@@ -1,16 +1,20 @@
 package router
 
 import (
+	"crypto/tls"
 	"encoding/base64"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/template/html"
+	utils "github.com/mrflynn/air-alert/internal"
 	"github.com/mrflynn/air-alert/internal/database/redis"
 	"github.com/mrflynn/air-alert/internal/database/sql"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 // Router is the main application HTTP router.
@@ -103,9 +107,37 @@ func (r *Router) Run() error {
 
 	r.addRoutes()
 
+	var ln net.Listener
+	if viper.GetBool("web.ssl.enable") {
+		cache, err := utils.NewCache()
+		if err != nil {
+			return err
+		}
+
+		manager := autocert.Manager{
+			Prompt:     autocert.AcceptTOS,
+			Cache:      cache,
+			HostPolicy: autocert.HostWhitelist(viper.GetStringSlice("web.ssl.domains")...),
+			Email:      viper.GetString("web.ssl.email"),
+		}
+
+		config := manager.TLSConfig()
+		config.MinVersion = tls.VersionTLS12
+
+		ln, err = tls.Listen("tcp4", r.Address, config)
+		if err != nil {
+			return err
+		}
+	} else {
+		ln, err = net.Listen("tcp4", r.Address)
+		if err != nil {
+			return err
+		}
+	}
+
 	go func() {
 		log.Infof("router is now listening at %s", r.Address)
-		err = r.app.Listen(r.Address)
+		err = r.app.Listener(ln)
 	}()
 
 	return err

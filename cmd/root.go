@@ -88,6 +88,11 @@ func init() {
 	viper.SetDefault("web.template_dir", "./templates")
 	viper.SetDefault("web.static_dir", "./static")
 
+	// SSL settings.
+	viper.SetDefault("web.ssl.enable", false)
+	viper.SetDefault("web.ssl.domains", []string{""})
+	viper.SetDefault("web.ssl.email", "")
+
 	// Default notification settings.
 	viper.SetDefault("web.notifications.threads", 4)
 	viper.SetDefault("web.notifications.group", "notification_delivery")
