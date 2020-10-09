@@ -129,6 +129,7 @@ func (r *Router) Run() error {
 
 		config := manager.TLSConfig()
 		config.MinVersion = tls.VersionTLS12
+		config.PreferServerCipherSuites = true
 
 		ln, err = tls.Listen("tcp4", r.Address, config)
 		if err != nil {
