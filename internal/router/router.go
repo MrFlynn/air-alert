@@ -3,6 +3,7 @@ package router
 import (
 	"crypto/tls"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -114,10 +115,15 @@ func (r *Router) Run() error {
 			return err
 		}
 
+		domains := viper.GetStringSlice("web.ssl.domains")
+		if len(domains) < 1 {
+			return errors.New("No domains provided. You must provide a list of domains when SSL is enabled")
+		}
+
 		manager := autocert.Manager{
 			Prompt:     autocert.AcceptTOS,
 			Cache:      cache,
-			HostPolicy: autocert.HostWhitelist(viper.GetStringSlice("web.ssl.domains")...),
+			HostPolicy: autocert.HostWhitelist(domains...),
 			Email:      viper.GetString("web.ssl.email"),
 		}
 
