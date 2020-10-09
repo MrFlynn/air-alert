@@ -21,8 +21,6 @@ dockers:
     image_templates:
       - "docker.io/mrflynn/{{ .ProjectName }}:latest"
       - "docker.io/mrflynn/{{ .ProjectName }}:{{ .Tag }}"
-      - "ghcr.io/mrflynn/{{ .ProjectName }}:latest"
-      - "ghcr.io/mrflynn/{{ .ProjectName }}:{{ .Tag }}"
     build_flag_templates:
       - "--pull"
       - "--label=org.opencontainers.image.created={{ .Date }}"

@@ -21,12 +21,6 @@ jobs:
         with:
           username: mrflynn
           password: ${{ secrets.DOCKER_REGISTRY_KEY }}
-      - name: Log into Github container registry
-        uses: azure/docker-login@v1
-        with:
-          login-server: ghcr.io
-          username: mrflynn
-          password: ${{ secrets.CR_PAT }}
       - uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
