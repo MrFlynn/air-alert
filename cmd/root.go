@@ -82,6 +82,7 @@ func init() {
 	viper.SetDefault("database.postgres.username", "postgres")
 	viper.SetDefault("database.postgres.password", "")
 	viper.SetDefault("database.postgres.database", "airalert")
+	viper.SetDefault("database.postgres.ssl_mode", "require")
 
 	// Default web server settings.
 	viper.SetDefault("web.addr", ":3000")
@@ -150,12 +151,13 @@ func initApp() error {
 	dbConn, err = sql.Open(
 		"postgres",
 		fmt.Sprintf(
-			"dbname=%s user=%s password=%s host=%s port=%d",
+			"dbname=%s user=%s password=%s host=%s port=%d sslmode=%s",
 			viper.GetString("database.postgres.database"),
 			viper.GetString("database.postgres.username"),
 			viper.GetString("database.postgres.password"),
 			viper.GetString("database.postgres.host"),
 			viper.GetInt("database.postgres.port"),
+			viper.GetString("database.postgres.ssl_mode"),
 		),
 	)
 
