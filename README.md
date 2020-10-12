@@ -32,7 +32,7 @@ You can leave most of these as-is.
 
 If you wish to change certain settings or get a better understanding of what 
 they do, head down to the [Configuration](#configuration) section of this 
-document for more information. If you are serving this application publically,
+document for more information. If you are serving this application publicly,
 I recommend enabling SSL. See the [SSL](#web.ssl) section for more information.
 
 ### Running the Application
@@ -98,6 +98,10 @@ own username + password set.
 * **username**: Username of Postgres user with access to **database**. Default
 is "postgres".
 * **password**: Password of Postgres user. Default is empty string.
+* **ssl_mode**: Postgres SSL configuration. Default is "require". Valid options
+include "disable", "require", "verify-ca", and "verify-full". See 
+[lib/pq](https://pkg.go.dev/github.com/lib/pq#hdr-Connection_String_Parameters)
+sslmode settings for a more in-depth description for each option.
 
 #### `database.redis`
 This section configures access to the Redis datastore which is used to store
@@ -162,7 +166,7 @@ not start up.
 
 ### Full Configuration File
 Here is an example of a complete configuration file with default values. Refer 
-to any section above for a more in-depth description of each option,.
+to any section above for a more in-depth description of each option.
 
 ```toml
 timezone = "UTC"
