@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/SherClockHolmes/webpush-go"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -27,5 +29,11 @@ func generateKeys(cmd *cobra.Command, args []string) error {
 	viper.Set("web.notifications.private_key", privateKey)
 	viper.Set("web.notifications.public_key", publicKey)
 
-	return viper.WriteConfig()
+	err = viper.WriteConfig()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Configuration file %s has been initialized.\n", viper.ConfigFileUsed())
+	return nil
 }
