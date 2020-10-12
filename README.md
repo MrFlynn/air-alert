@@ -35,10 +35,16 @@ they do, head down to the [Configuration](#configuration) section of this
 document for more information. If you are serving this application publicly,
 I recommend enabling SSL. See the [SSL](#web.ssl) section for more information.
 
+Finally, you will need to generate two passwords: one for the postgres root
+account and one for the postgres storage account. Set the following 
+environment variables with their respective values: `AIR_ALERT_PGPASS` and
+`POSTGRES_PASSWORD`.
+
 ### Running the Application
 Running the application with Docker Compose is quite easy. Just run
 
 ```bash
+$ mkdir -p data/postgres data/redis
 $ docker-compose up -d
 ```
 
@@ -80,6 +86,12 @@ timezone = "America/Los_Angeles" # Use your local time zone, or UTC.
     enable = true
 
 ```
+
+Also, ensure that if you do configure a password for Redis or Postgres then
+this is also reflected in the configuration of each, respectively. In the default
+configuration created when you run Air Alert under Docker Compose, Redis won't
+have a password so this field should be left blank. You can alter compose to
+add a password, but that is not the default behavior.
 
 ### Options
 * **timezone**: Application timezone. This configures the timezone under which
