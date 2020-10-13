@@ -191,6 +191,7 @@ timezone = "UTC"
     password = ""
     port = 5432
     username = "postgres"
+    ssl_mode = "require"
 
   [database.redis]
     addr = ":6379"
