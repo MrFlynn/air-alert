@@ -47,8 +47,10 @@ archives:
     files:
       - README.md
       - LICENSE
+      - docker-compose.yml
       - static/dist/*
       - templates/*
+      - scripts/*
 checksum:
   name_template: "SHA256SUMS"
 snapshot:
