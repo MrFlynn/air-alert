@@ -1,0 +1,11 @@
+# Variable files.
+*.tfvars
+
+# Local configurations.
+.terraform/
+
+# State files.
+*.tfstate*
+
+# K8s secrets.
+secrets/
