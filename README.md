@@ -229,4 +229,4 @@ make or propose changes and we can have a discussion about them.
 * [Nick Pleatsikas](https://github.com/MrFlynn)
 
 ## License
-[Apache 2.0](LICENSE)
+[AGPL-3.0](LICENSE)
