@@ -27,10 +27,12 @@ jobs:
           go-version: '1.15'
       - name: Set env variables
         run: |
-          echo "::set-env name=PGUSER::airalert"
-          echo "::set-env name=PGDBNAME::airalert"
-          echo "::set-env name=PGPASS::$(openssl rand -base64 16)"
-          echo "::set-env name=DBSPEC::$(pwd)/config/sql/users.sql"
+          export PGPASS=$(openssl rand -base64 16)
+
+          echo "PGUSER=airalert" >> $GITHUB_ENV
+          echo "PGDBNAME=airalert" >> $GITHUB_ENV
+          echo "PGPASS=$PGPASS" >> $GITHUB_ENV
+          echo "DBSPEC=$(pwd)/config/sql/users.sql" >> $GITHUB_ENV
 
           echo "::add-mask::$PGPASS"
       - name: Setup PostgreSQL Database
