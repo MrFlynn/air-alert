@@ -19,7 +19,7 @@ func getLocationParameters(ctx *fiber.Ctx) (float64, float64, float64, error) {
 		err               error
 	)
 
-	value, err = decimal.NewFromString(ctx.Query("long"))
+	value, err = decimal.NewFromString(ctx.Params("longitude"))
 	if err != nil {
 		err = errorInfo{
 			err: fiber.ErrBadRequest,
@@ -30,7 +30,7 @@ func getLocationParameters(ctx *fiber.Ctx) (float64, float64, float64, error) {
 	}
 	long, _ = value.Round(2).Float64()
 
-	value, err = decimal.NewFromString(ctx.Query("lat"))
+	value, err = decimal.NewFromString(ctx.Params("latitude"))
 	if err != nil {
 		err = errorInfo{
 			err: fiber.ErrBadRequest,

@@ -90,13 +90,14 @@ func (r *Router) addRoutes() {
 		return unsubscribeFromNofications(ctx, r.database)
 	})
 
-	r.app.Get("/aqi/current", func(ctx *fiber.Ctx) error {
+	r.app.Get("/aqi/:latitude/:longitude", func(ctx *fiber.Ctx) error {
 		return getAverageAQI(ctx, r.datastore)
 	})
 
 	api := r.app.Group("/api/v0")
+	locationGroup := api.Group("/:latitude/:longitude")
 
-	api.Get("/sensors", func(ctx *fiber.Ctx) error {
+	locationGroup.Get("/data", func(ctx *fiber.Ctx) error {
 		return getAQIReadings(ctx, r.datastore)
 	})
 }

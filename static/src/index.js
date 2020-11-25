@@ -28,7 +28,7 @@ function getPosition(callback) {
 }
 
 function getAQI(latitude, longitude) {
-  fetch(`/aqi/current?lat=${latitude}&long=${longitude}`)
+  fetch(`/aqi/${latitude}/${longitude}`)
     .then(resp => resp.text())
     .then(aqi => updateDisplayBox(aqi))
     .catch(err => console.error(err));
